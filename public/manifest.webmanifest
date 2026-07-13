@@ -1,0 +1,10 @@
+{
+  "name": "화투록",
+  "short_name": "화투록",
+  "description": "네 장을 맞추고 점수패를 모으는 화투 덱빌딩 게임",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#07110e",
+  "theme_color": "#08110e"
+}
