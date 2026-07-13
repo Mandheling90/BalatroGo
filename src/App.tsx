@@ -43,6 +43,7 @@ interface GameState {
   lastRevealed: string[]
   lastCapturedMonths: number[]
   lastPlayedId: string | null
+  lastSubmittedId: string | null
   lastCapturedIds: string[]
 }
 
@@ -107,33 +108,50 @@ const newGame = (): GameState => ({
   message: '도전할 블라인드를 확인하세요.',
   lastRevealed: [],
   lastPlayedId: null,
+  lastSubmittedId: null,
   lastCapturedIds: [],
 })
 
 const categoryCards = (cards: HwatuCard[], category: 'gwang' | 'animal' | 'ribbon' | 'pi') =>
   cards.filter((card) => category === 'ribbon' ? card.kind.startsWith('ribbon') : card.kind === category)
 
-function Card({ card, selected = false, compact = false, revealed = false, slapped = false, flyToScore = false, effectIndex = 0, onClick }: {
+function getFloorPosition(index: number, total: number) {
+  const outerCount = total > 18 ? Math.ceil(total * 0.64) : total
+  const inner = index >= outerCount
+  const ringIndex = inner ? index - outerCount : index
+  const ringCount = inner ? total - outerCount : outerCount
+  const angle = -Math.PI / 2 + (Math.PI * 2 * ringIndex) / Math.max(1, ringCount)
+  const radiusX = inner ? 26 : 43
+  const radiusY = inner ? 19 : 31
+  return {
+    x: 50 + Math.cos(angle) * radiusX,
+    y: 50 + Math.sin(angle) * radiusY,
+  }
+}
+
+function Card({ card, selected = false, compact = false, revealed = false, slapped = false, flyToScore = false, submittedCapture = false, effectIndex = 0, effectDelayMs, onClick }: {
   card: HwatuCard
   selected?: boolean
   compact?: boolean
   revealed?: boolean
   slapped?: boolean
   flyToScore?: boolean
+  submittedCapture?: boolean
   effectIndex?: number
+  effectDelayMs?: number
   onClick?: () => void
 }) {
   const Tag = onClick ? 'button' : 'div'
   return (
     <Tag
-      className={`hwatu-card kind-${card.kind} ${selected ? 'selected' : ''} ${compact ? 'compact' : ''} ${revealed ? 'revealed' : ''} ${slapped ? 'slapped' : ''} ${flyToScore ? 'fly-to-score' : ''}`}
+      className={`hwatu-card kind-${card.kind} ${selected ? 'selected' : ''} ${compact ? 'compact' : ''} ${revealed ? 'revealed' : ''} ${slapped ? 'slapped' : ''} ${flyToScore ? 'fly-to-score' : ''} ${submittedCapture ? 'submitted-capture' : ''}`}
       onClick={onClick}
       aria-pressed={onClick ? selected : undefined}
       title={card.title}
       style={{
         '--sprite-position': `${(card.spriteColumn / 7) * 100}% ${(card.spriteRow / 5) * 100}%`,
         '--effect-index': effectIndex,
-        '--effect-delay': `${effectIndex * 45}ms`,
+        '--effect-delay': `${effectDelayMs ?? effectIndex * 45}ms`,
         '--fly-offset': `${(effectIndex - 1.5) * 16}px`,
       } as React.CSSProperties}
     >
@@ -150,8 +168,10 @@ function App() {
   const [showRules, setShowRules] = useState(false)
   const [matchChoice, setMatchChoice] = useState<{ playedId: string; matchIds: string[] } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
+  const [isResolving, setIsResolving] = useState(false)
   const score = useMemo(() => scoreCaptured(game.captured, game.ownedCharms), [game.captured, game.ownedCharms])
   const currentBlind = getBlind(game.round, game.blindIndex)
+  const selectedMonth = game.hand.find((card) => card.id === game.selected)?.month
   const turn = 11 - game.hand.length
   const sortedHand = useMemo(() => [...game.hand].sort((a, b) => {
     if (handSort === 'kind') {
@@ -160,6 +180,10 @@ function App() {
     }
     return a.month - b.month || a.spriteColumn - b.spriteColumn
   }), [game.hand, handSort])
+  const floorGroups = useMemo(() => Array.from({ length: 12 }, (_, index) => ({
+    month: index + 1,
+    cards: game.table.filter((card) => card.month === index + 1),
+  })).filter((group) => group.cards.length > 0), [game.table])
 
   useEffect(() => {
     const tryLandscapeLock = () => {
@@ -181,6 +205,8 @@ function App() {
 
   const resolveTurn = (pickedMatchId?: string) => {
     setMatchChoice(null)
+    setIsResolving(true)
+    window.setTimeout(() => setIsResolving(false), 1100)
     setGame((current) => {
       const played = current.hand.find((card) => card.id === current.selected)
       if (!played) return current
@@ -223,6 +249,7 @@ function App() {
           ...afterCapture.completeMonths,
         ])),
         lastPlayedId: playerMatch.matched ? null : played.id,
+        lastSubmittedId: played.id,
         lastCapturedIds: newlyCaptured.map((card) => card.id),
       }
     })
@@ -253,6 +280,7 @@ function App() {
         message: `${blind.name} 시작. 손패 한 장을 골라 바닥에 놓으세요.`,
         lastRevealed: [],
         lastPlayedId: null,
+        lastSubmittedId: null,
         lastCapturedIds: [],
       }
     })
@@ -297,6 +325,7 @@ function App() {
       message: current.blindIndex === 2 ? '새 앤티가 열렸습니다.' : '다음 블라인드를 선택하세요.',
       lastRevealed: [],
       lastPlayedId: null,
+      lastSubmittedId: null,
       lastCapturedIds: [],
     }))
   }
@@ -309,19 +338,19 @@ function App() {
   ]
 
   return (
-    <main className="game-shell capture-game">
+    <main className={`game-shell capture-game ${isResolving ? 'is-resolving' : ''}`}>
       <div className="rotate-device" aria-hidden="true">
         <div className="rotate-phone">↻</div>
         <strong>가로로 돌려주세요</strong>
         <span>화투록은 가로 화면에 맞춰져 있습니다.</span>
       </div>
-      <header className="topbar">
+      {game.phase === 'blind' && <header className="topbar">
         <div className="brand">
           <span className="brand-mark">花</span>
           <div><h1>화투록</h1><p>네 장을 맞추고, 점수패를 모아라</p></div>
         </div>
         <button className="text-button" onClick={() => setShowRules(true)}>게임 방법</button>
-      </header>
+      </header>}
 
       {game.phase === 'blind' ? (
         <section className="blind-select-screen">
@@ -368,10 +397,14 @@ function App() {
       ) : (
       <div className="capture-layout">
         <aside className="status-rail panel">
+          <div className="rail-game-header">
+            <div className="rail-logo"><span>花</span><strong>화투록</strong></div>
+            <button onClick={() => setShowRules(true)}>게임 방법</button>
+          </div>
           <div className="round-label">ANTE {game.round} · {currentBlind.english}</div>
           <div className="goal-score">
             <span>현재 점수</span>
-            <strong className="score-pop" key={score.total}>{score.total}</strong>
+            <strong className={game.lastCapturedIds.length ? 'score-pop' : ''} key={score.total}>{score.total}</strong>
             <i>/ {game.target}점</i>
           </div>
           <div className="progress-track"><div style={{ width: `${Math.min(100, score.total / game.target * 100)}%` }} /></div>
@@ -387,38 +420,50 @@ function App() {
           </section>
 
           <div className="coin-box"><span>보유 엽전</span><strong>{game.coins}냥</strong></div>
-        </aside>
-
-        <section className="capture-board">
-          <div className="charms-row">
+          <div className="charms-row status-charms">
             <span className="slot-title">부적</span>
             {game.ownedCharms.map((id) => {
               const charm = charms.find((item) => item.id === id)!
-              return <div className="mini-charm" key={id} title={charm.description} style={{ '--accent': charm.accent } as React.CSSProperties}><b>{charm.icon}</b><span>{charm.name}</span></div>
+              return <div className="mini-charm" key={id} title={`${charm.name} · ${charm.description}`} style={{ '--accent': charm.accent } as React.CSSProperties}><b>{charm.icon}</b><span>{charm.name}</span></div>
             })}
             {Array.from({ length: Math.max(0, 5 - game.ownedCharms.length) }).map((_, index) => <div className="empty-slot" key={index}>+</div>)}
           </div>
+        </aside>
 
+        <section className="capture-board">
           <div className="table-zone">
-            <div className="zone-heading">
-              <div><span>바닥패</span><strong>{game.table.length}장</strong></div>
-              <p>손패로 같은 월을 맞추거나, 네 장이 모두 펼쳐지면 획득합니다.</p>
-              <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
-            </div>
             <div className="floor-spread">
-              {[...game.table].sort((a, b) => a.month - b.month).map((card, index) => (
+              <div className="center-deck" aria-label={`뒤집지 않은 패 ${game.deck.length}장`}>
+                <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
+              </div>
+              {floorGroups.map((group, groupIndex) => {
+                const position = getFloorPosition(groupIndex, floorGroups.length)
+                return group.cards.map((card, stackIndex) => (
                 <div
-                  className={`loose-card ${game.table.filter((item) => item.month === card.month).length === 3 ? 'almost-set' : ''}`}
+                  className={`loose-card ${group.cards.length > 1 ? 'same-month-stack' : ''} ${group.cards.length === 3 ? 'almost-set' : ''} ${selectedMonth === card.month ? 'can-capture' : ''}`}
                   key={card.id}
                   style={{
-                    '--scatter-rotate': `${((index * 7 + card.month * 3) % 9) - 4}deg`,
-                    '--scatter-shift': `${((index * 11) % 7) - 3}px`,
+                    '--floor-x': `${position.x}%`,
+                    '--floor-y': `${position.y}%`,
+                    '--stack-x': `${stackIndex * 9}px`,
+                    '--stack-y': `${stackIndex * 4}px`,
+                    '--stack-order': stackIndex + 1,
+                    '--scatter-rotate': `${((groupIndex * 7 + card.month * 3 + stackIndex * 2) % 7) - 3}deg`,
+                    '--scatter-shift': `${((groupIndex * 11) % 5) - 2}px`,
                   } as React.CSSProperties}
                 >
-                  <Card card={card} compact revealed={game.lastRevealed.includes(card.id)} slapped={game.lastPlayedId === card.id} effectIndex={Math.max(0, game.lastRevealed.indexOf(card.id))} />
-                  <span>{card.month}월</span>
+                  <Card
+                    card={card}
+                    compact
+                    revealed={game.lastRevealed.includes(card.id)}
+                    slapped={game.lastPlayedId === card.id}
+                    effectIndex={Math.max(0, game.lastRevealed.indexOf(card.id))}
+                    effectDelayMs={(game.lastCapturedIds.length ? 780 : 360) + Math.max(0, game.lastRevealed.indexOf(card.id)) * 130}
+                  />
+                  {stackIndex === group.cards.length - 1 && <span>{card.month}월 · {group.cards.length}장</span>}
                 </div>
-              ))}
+                ))
+              })}
               {!game.table.length && <div className="empty-floor">가져간 패가 놓였던 자리입니다</div>}
             </div>
             {!!game.lastCapturedIds.length && (
@@ -430,25 +475,24 @@ function App() {
 
           <section className="hand-zone">
             <div className="player-hand">
-              {sortedHand.map((card) => <Card key={card.id} card={card} selected={game.selected === card.id} onClick={() => setGame((current) => ({ ...current, selected: current.selected === card.id ? null : card.id }))} />)}
+              {sortedHand.map((card) => <Card key={card.id} card={card} selected={game.selected === card.id} onClick={() => !isResolving && setGame((current) => ({ ...current, selected: current.selected === card.id ? null : card.id }))} />)}
             </div>
             <div className="hand-sort" aria-label="손패 정렬">
               <button className={handSort === 'month' ? 'active' : ''} aria-pressed={handSort === 'month'} onClick={() => setHandSort('month')}>월순</button>
               <button className={handSort === 'kind' ? 'active' : ''} aria-pressed={handSort === 'kind'} onClick={() => setHandSort('kind')}>종류순</button>
             </div>
-            <button className="primary-action play-turn" disabled={!game.selected || game.phase !== 'playing'} onClick={playTurn}>
+            <button className="primary-action play-turn" disabled={!game.selected || game.phase !== 'playing' || isResolving} onClick={playTurn}>
               패 놓고 차례 넘기기 <span>바닥패 +2장</span>
             </button>
           </section>
 
           <section className="won-pile">
-            <div className="zone-heading"><div><span>획득한 점수패</span><strong>{game.captured.length}장</strong></div><p>같은 월을 맞춰 가져온 패가 종류별로 쌓입니다.</p></div>
             <div className="won-groups">
               {capturedGroups.map((group) => {
                 const cards = categoryCards(game.captured, group.key)
                 const visibleCards = cards.slice(-4)
                 const hiddenCount = cards.length - visibleCards.length
-                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
+                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} submittedCapture={card.id === game.lastSubmittedId && game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={0} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
               })}
             </div>
           </section>
