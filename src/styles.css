@@ -521,7 +521,6 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .blind-heading h2 { margin: 5px 0 4px; font: 700 31px 'Gowun Batang'; }
 .blind-heading p { margin: 0; color: #818c84; font-size: 11px; }
 .blind-path { width: min(920px, 100%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; position: relative; }
-.blind-path::before { content: ''; position: absolute; left: 15%; right: 15%; top: 67px; height: 2px; background: #39443d; }
 .blind-card {
   --blind-color: #d3b15a;
   min-height: 365px;
@@ -640,7 +639,6 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .blind-heading h2 { margin: 1px 0; font-size: 17px; }
   .blind-heading p { font-size: 6px; }
   .blind-path { width: min(700px, 100%); flex: 1; min-height: 0; gap: 9px; }
-  .blind-path::before { top: 40px; }
   .blind-card { min-height: 0; height: 100%; padding: 44px 10px 8px; border-radius: 9px; }
   .blind-card.current { transform: translateY(-3px); }
   .blind-token { width: 50px; height: 50px; top: 7px; border-width: 2px; border-radius: 14px; }
