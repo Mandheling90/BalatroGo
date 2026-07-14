@@ -226,7 +226,7 @@ function App() {
   const capturedRevealedCards = game.captured.filter((card) => game.lastRevealed.includes(card.id))
   const getCaptureEffectDelay = (card: HwatuCard) => {
     const matchingRevealIndex = capturedRevealedCards.findIndex((revealed) => revealed.month === card.month)
-    return matchingRevealIndex >= 0 ? 1200 + matchingRevealIndex * 900 : 550
+    return matchingRevealIndex >= 0 ? 1200 + matchingRevealIndex * 900 : 1200
   }
 
   useEffect(() => {
@@ -553,7 +553,6 @@ function App() {
                   key={definition.english}
                 >
                   <div className="blind-token"><span>{definition.icon}</span></div>
-                  <span className="blind-order">{definition.english}</span>
                   <h3>{definition.name}</h3>
                   <div className="blind-stakes">
                     <div><span>목표</span><strong>{blind.target}점</strong></div>
@@ -618,18 +617,22 @@ function App() {
               {isResolving && capturedRevealedCards.map((card) => {
                 const position = getFloorPosition(card.month - 1, 12)
                 const revealIndex = game.lastRevealed.indexOf(card.id)
+                const priorFloorCards = matchedTargetCards.filter((target) => target.month === card.month).length
+                const submittedCardOffset = submittedAnimationCard?.month === card.month ? 1 : 0
+                const stackIndex = priorFloorCards + submittedCardOffset
                 return (
                   <div
-                    className="loose-card dealt-from-deck"
+                    className="loose-card dealt-from-deck captured-reveal-flight"
                     key={`revealed-flight-${card.id}`}
                     style={{
                       '--floor-x': `${position.x}%`,
                       '--floor-y': `${position.y}%`,
-                      '--stack-x': '0px',
-                      '--stack-y': '0px',
+                      '--stack-x': `${stackIndex * 9}px`,
+                      '--stack-y': `${stackIndex * 4}px`,
                       '--scatter-shift': '0px',
                       '--scatter-rotate': '0deg',
                       '--deal-delay': `${360 + revealIndex * 900}ms`,
+                      '--capture-delay': `${1200 + revealIndex * 900}ms`,
                     } as React.CSSProperties}
                   >
                     <Card card={card} compact />
@@ -639,6 +642,7 @@ function App() {
               {isResolving && matchedTargetCards.map((card, index) => {
                 const position = getFloorPosition(card.month - 1, 12)
                 const matchingRevealIndex = capturedRevealedCards.findIndex((revealed) => revealed.month === card.month)
+                const stackIndex = matchedTargetCards.slice(0, index).filter((target) => target.month === card.month).length
                 return (
                   <div
                     className="match-target-ghost"
@@ -646,8 +650,9 @@ function App() {
                     style={{
                       '--match-x': `${position.x}%`,
                       '--match-y': `${position.y}%`,
-                      '--ghost-x': `${index * 8}px`,
-                      '--ghost-duration': `${matchingRevealIndex >= 0 ? 1200 + matchingRevealIndex * 900 : 580}ms`,
+                      '--ghost-x': `${stackIndex * 9}px`,
+                      '--ghost-y': `${stackIndex * 4}px`,
+                      '--ghost-duration': `${matchingRevealIndex >= 0 ? 1200 + matchingRevealIndex * 900 : 1200}ms`,
                     } as React.CSSProperties}
                   >
                     <Card card={card} compact />
@@ -706,19 +711,21 @@ function App() {
               <button className={handSort === 'kind' ? 'active' : ''} aria-pressed={handSort === 'kind'} onClick={() => setHandSort('kind')}>종류순</button>
             </div>
             <button className="primary-action play-turn" disabled={!game.selected || game.phase !== 'playing' || isResolving || game.awaitingGoStop} onClick={playTurn}>
-              패 놓고 차례 넘기기 <span>바닥패 +2장</span>
+              카드 제출
             </button>
           </section>
 
         </section>
         {isResolving && game.lastMatchTarget && submittedAnimationCard && (
           <div
-            className="submitted-card-flight"
+            className={`submitted-card-flight ${game.lastPlayedId ? '' : 'hold-for-capture'}`}
             style={{
               '--submit-x': `${submitFlight.fromX}px`,
               '--submit-y': `${submitFlight.fromY}px`,
               '--match-x': `${submitFlight.toX}px`,
               '--match-y': `${submitFlight.toY}px`,
+              '--hold-x': `${matchedTargetCards.filter((card) => card.month === submittedAnimationCard.month).length * 9}px`,
+              '--hold-y': `${matchedTargetCards.filter((card) => card.month === submittedAnimationCard.month).length * 4}px`,
             } as React.CSSProperties}
           >
             <Card card={submittedAnimationCard} />
