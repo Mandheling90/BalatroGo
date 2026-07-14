@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { CardKind, charms, createDeck, HwatuCard, kindLabel, scoreCaptured, shuffle } from './game'
+import { CardKind, charms, createDeck, HwatuCard, scoreCaptured, shuffle } from './game'
 
 type Phase = 'blind' | 'playing' | 'shop' | 'gameover'
 type BlindIndex = 0 | 1 | 2
@@ -152,7 +151,6 @@ function Card({ card, selected = false, compact = false, revealed = false, slapp
       className={`hwatu-card kind-${card.kind} ${selected ? 'selected' : ''} ${compact ? 'compact' : ''} ${revealed ? 'revealed' : ''} ${slapped ? 'slapped' : ''} ${flyToScore ? 'fly-to-score' : ''} ${submittedCapture ? 'submitted-capture' : ''}`}
       onClick={onClick}
       aria-pressed={onClick ? selected : undefined}
-      title={card.title}
       style={{
         '--sprite-position': `${(card.spriteColumn / 7) * 100}% ${(card.spriteRow / 5) * 100}%`,
         '--effect-index': effectIndex,
@@ -163,7 +161,6 @@ function Card({ card, selected = false, compact = false, revealed = false, slapp
       <span className="month">{card.month}월</span>
       <span className="plant">{card.symbol}</span>
       <span className="flower">{card.flower}</span>
-      <span className="kind">{kindLabel[card.kind]}</span>
     </Tag>
   )
 }
@@ -541,7 +538,6 @@ function App() {
                     effectIndex={Math.max(0, game.lastRevealed.indexOf(card.id))}
                     effectDelayMs={(game.lastCapturedIds.length ? 1120 : 360) + Math.max(0, game.lastRevealed.indexOf(card.id)) * 900}
                   />
-                  {stackIndex === group.cards.length - 1 && <span>{card.month}월 · {group.cards.length}장</span>}
                 </div>
                 ))
               })}
@@ -575,7 +571,7 @@ function App() {
           </section>
 
         </section>
-        {isResolving && game.lastMatchTarget && submittedAnimationCard && createPortal(
+        {isResolving && game.lastMatchTarget && submittedAnimationCard && (
           <div
             className="submitted-card-flight"
             style={{
@@ -586,8 +582,7 @@ function App() {
             } as React.CSSProperties}
           >
             <Card card={submittedAnimationCard} />
-          </div>,
-          document.body,
+          </div>
         )}
       </div>
       )}
@@ -643,8 +638,6 @@ function App() {
                 {candidates.map((card) => (
                   <button key={card.id} onClick={() => resolveTurn(card.id)}>
                     <Card card={card} />
-                    <strong>{kindLabel[card.kind]}</strong>
-                    <span>{card.title}</span>
                   </button>
                 ))}
               </div>

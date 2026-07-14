@@ -263,6 +263,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .rail-won-pile .won-group { min-height: 92px; }
 .rail-won-pile .won-group > div { height: 76px; }
 .rail-won-pile .won-group .compact { width: 27px; margin-left: -15px; }
+.rail-won-pile .hwatu-card .month { display: none; }
 .won-group.just-scored { animation: scorePileKick .4s 1s cubic-bezier(.2, .9, .3, 1.3) both; border-color: #d9ae52; }
 .won-group .hwatu-card.fly-to-score {
   position: relative;
