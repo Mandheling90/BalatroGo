@@ -463,10 +463,6 @@ function App() {
       ) : (
       <div className="capture-layout">
         <aside className="status-rail panel">
-          <div className="rail-game-header">
-            <div className="rail-logo"><span>花</span><strong>화투록</strong></div>
-            <button onClick={() => setShowRules(true)}>게임 방법</button>
-          </div>
           <div className="round-label">ANTE {game.round} · {currentBlind.english}</div>
           <div className="goal-score">
             <span>현재 점수</span>
@@ -476,13 +472,16 @@ function App() {
           <div className="progress-track"><div style={{ width: `${Math.min(100, score.total / game.target * 100)}%` }} /></div>
           <div className="turn-info"><span>진행 턴</span><strong>{Math.min(turn, 10)} / 10</strong></div>
 
-          <section className="score-breakdown">
-            <span className="eyebrow">고스톱 점수</span>
-            {capturedGroups.map((group) => (
-              <div key={group.key}><span>{group.label}</span><b>{categoryCards(game.captured, group.key).length}장</b><strong>{group.score}점</strong></div>
-            ))}
-            {score.bonus > 0 && <div className="bonus-line"><span>부적</span><b></b><strong>+{score.bonus}점</strong></div>}
-            {score.details.length > 0 && <ul>{score.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}
+          <section className="rail-won-pile">
+            <span className="eyebrow">획득패</span>
+            <div className="won-groups">
+              {capturedGroups.map((group) => {
+                const cards = categoryCards(game.captured, group.key)
+                const visibleCards = cards.slice(-4)
+                const hiddenCount = cards.length - visibleCards.length
+                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={game.lastRevealed.includes(card.id) ? 1200 : 550} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
+              })}
+            </div>
           </section>
 
           <div className="coin-box"><span>보유 엽전</span><strong>{game.coins}냥</strong></div>
@@ -593,16 +592,6 @@ function App() {
             </button>
           </section>
 
-          <section className="won-pile">
-            <div className="won-groups">
-              {capturedGroups.map((group) => {
-                const cards = categoryCards(game.captured, group.key)
-                const visibleCards = cards.slice(-4)
-                const hiddenCount = cards.length - visibleCards.length
-                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={game.lastRevealed.includes(card.id) ? 1200 : 550} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
-              })}
-            </div>
-          </section>
         </section>
         {isResolving && game.lastMatchTarget && submittedAnimationCard && createPortal(
           <div
