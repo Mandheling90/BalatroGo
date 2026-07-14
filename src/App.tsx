@@ -208,24 +208,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const viewport = window.visualViewport
-    const syncViewportHeight = () => {
-      const height = viewport?.height ?? window.innerHeight
-      document.documentElement.style.setProperty('--visual-viewport-height', `${Math.round(height)}px`)
-    }
-    syncViewportHeight()
-    viewport?.addEventListener('resize', syncViewportHeight)
-    viewport?.addEventListener('scroll', syncViewportHeight)
-    window.addEventListener('orientationchange', syncViewportHeight)
-    return () => {
-      viewport?.removeEventListener('resize', syncViewportHeight)
-      viewport?.removeEventListener('scroll', syncViewportHeight)
-      window.removeEventListener('orientationchange', syncViewportHeight)
-      document.documentElement.style.removeProperty('--visual-viewport-height')
-    }
-  }, [])
-
-  useEffect(() => {
     if (!game.lastPlayedId && !game.lastCapturedIds.length) return
     if ('vibrate' in navigator) {
       navigator.vibrate(game.lastCapturedIds.length ? [18, 22, 32] : 18)
