@@ -88,7 +88,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .modal-heading h2, .rules-modal h2 { font-family: 'Gowun Batang'; font-size: 30px; margin: 5px 0; }
 .modal-heading p { color: #818b83; margin: 0; font-size: 12px; }
 .modal-heading > strong { padding: 8px 15px; color: #f6cd65; background: #080e0b; border-radius: 99px; }
-.shop-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 28px 0; }
+.shop-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: min(560px, 100%); margin: 28px auto; }
 .shop-charm { min-height: 225px; padding: 22px 15px; border-radius: 11px; color: #eeeade; background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 12%, #122019), #0b130f); border: 1px solid color-mix(in srgb, var(--accent) 60%, #1c2a23); cursor: pointer; text-align: center; }
 .shop-charm:hover:not(:disabled) { transform: translateY(-5px); box-shadow: 0 12px 25px color-mix(in srgb, var(--accent) 12%, transparent); }
 .shop-charm:disabled { opacity: .42; cursor: not-allowed; }
@@ -96,7 +96,12 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .shop-charm h3 { margin: 13px 0 8px; font-family: 'Gowun Batang'; }
 .shop-charm p { min-height: 55px; color: #9ca69e; font-size: 11px; line-height: 1.6; }
 .shop-charm b { color: #f0c85e; font-size: 13px; }
-.next-round { float: right; }
+.shop-actions { display: flex; justify-content: center; gap: 12px; }
+.shop-actions button { min-height: 52px; border-radius: 9px; padding: 0 24px; cursor: pointer; font-weight: 800; }
+.shop-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.reroll-shop { color: #f6cd65; background: #15231c; border: 1px solid #6f694c; }
+.shop-empty { grid-column: 1 / -1; padding: 40px 16px; color: #9ca69e; text-align: center; }
+.next-round { float: none; border: 0; }
 .result-modal { width: min(480px, 100%); text-align: center; }
 .go-stop-modal { width: min(460px, 100%); padding: 30px; text-align: center; background: #101d17; border: 1px solid #6f684e; border-radius: 16px; box-shadow: 0 28px 80px #000; }
 .go-stop-modal h2 { margin: 5px 0; font: 700 29px 'Gowun Batang'; color: #f0c760; }
@@ -125,7 +130,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .resource-row { grid-column: 1; }
   .hand { min-height: 270px; padding-left: 0; padding-right: 0; }
   .hwatu-card { width: 90px; flex-basis: 90px; margin-left: -20px; }
-  .shop-grid { grid-template-columns: repeat(3, 1fr); }
+  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 580px) {

@@ -16,6 +16,8 @@ export interface GameState {
   captured: HwatuCard[]
   selected: string | null
   ownedCharms: string[]
+  shopOfferIds: string[]
+  shopRerollCost: number
   phase: Phase
   pendingPhase: 'shop' | 'gameover' | null
   message: string

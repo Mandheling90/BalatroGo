@@ -1,6 +1,7 @@
 import { scoreCaptured } from '../../game'
 import { getBlind } from '../data/blinds'
 import type { GameState } from './types'
+import { createShopOffers, INITIAL_REROLL_COST } from './shop'
 
 export function chooseGo(state: GameState): GameState {
   if (!state.awaitingGoStop) return state
@@ -40,6 +41,8 @@ export function chooseStop(state: GameState): GameState {
     blindHistory: history,
     coins: state.coins + blind.reward + state.hand.length,
     phase: 'shop',
+    shopOfferIds: createShopOffers(state.ownedCharms),
+    shopRerollCost: INITIAL_REROLL_COST,
     message: `${state.goCount}고에서 스톱! 블라인드를 클리어했습니다.`,
   }
 }

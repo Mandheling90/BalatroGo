@@ -7,7 +7,8 @@ import { getFloorPosition } from './game/engine/floor-layout'
 import { chooseGo, chooseStop } from './game/engine/go-stop'
 import { resolveGameTurn } from './game/engine/resolve-turn'
 import { createNewGame, dealRound } from './game/engine/setup'
-import type { BlindIndex, BlindStatus, GameState } from './game/engine/types'
+import { buyShopCharm, leaveShop, rerollShop } from './game/engine/shop'
+import type { BlindIndex, GameState } from './game/engine/types'
 
 type HandSort = 'month' | 'kind'
 
@@ -171,33 +172,12 @@ function App() {
   }
 
   const buyCharm = (id: string) => {
-    const charm = charms.find((item) => item.id === id)
-    if (!charm || game.coins < charm.price || game.ownedCharms.includes(id)) return
-    setGame((current) => ({
-      ...current,
-      coins: current.coins - charm.price,
-      ownedCharms: [...current.ownedCharms, id],
-      message: `${charm.name}을 손에 넣었습니다.`,
-    }))
+    setGame((current) => buyShopCharm(current, id))
   }
 
-  const nextBlind = () => {
-    setGame((current) => ({
-      ...current,
-      ...(current.blindIndex === 2
-        ? { round: current.round + 1, blindIndex: 0 as BlindIndex, blindHistory: ['pending', 'pending', 'pending'] as BlindStatus[] }
-        : { blindIndex: (current.blindIndex + 1) as BlindIndex }),
-      selected: null,
-      phase: 'blind',
-      pendingPhase: null,
-      message: current.blindIndex === 2 ? '새 앤티가 열렸습니다.' : '다음 블라인드를 선택하세요.',
-      lastRevealed: [],
-      lastPlayedId: null,
-      lastSubmittedId: null,
-      lastCapturedIds: [],
-      lastMatchTarget: null,
-    }))
-  }
+  const rerollCharms = () => setGame(rerollShop)
+
+  const exitShop = () => setGame(leaveShop)
 
   const capturedGroups = [
     { key: 'gwang' as const, label: '광', score: score.gwang },
@@ -427,19 +407,20 @@ function App() {
 
       {game.phase === 'shop' && (
         <div className="overlay"><section className="shop-modal">
-          <div className="modal-heading"><div><span>{currentBlind.name} 클리어</span><h2>{game.target}점 달성!</h2><p>부적은 획득한 점수패의 계산법을 강화합니다.</p></div><strong>{game.coins}냥</strong></div>
+          <div className="modal-heading"><div><span>{currentBlind.name} 클리어</span><h2>부적 상점</h2><p>진열된 부적을 구매하거나 상품을 리롤할 수 있습니다.</p></div><strong>{game.coins}냥</strong></div>
           <div className="shop-grid">
-            {charms.map((charm) => {
+            {game.shopOfferIds.map((id) => charms.find((charm) => charm.id === id)).filter((charm) => charm !== undefined).map((charm) => {
               const owned = game.ownedCharms.includes(charm.id)
               return <button key={charm.id} className="shop-charm" disabled={owned || game.coins < charm.price} onClick={() => buyCharm(charm.id)} style={{ '--accent': charm.accent } as React.CSSProperties}>
                 <i>{charm.icon}</i><h3>{charm.name}</h3><p>{charm.description}</p><b>{owned ? '보유 중' : `${charm.price}냥`}</b>
               </button>
             })}
+            {!game.shopOfferIds.length && <p className="shop-empty">구매할 수 있는 부적이 더 없습니다.</p>}
           </div>
-          <button className="primary-action next-round" onClick={nextBlind}>
-            {game.blindIndex === 2 ? '다음 앤티로' : '다음 블라인드로'}
-            <span>선택 화면</span>
-          </button>
+          <div className="shop-actions">
+            <button className="reroll-shop" disabled={game.coins < game.shopRerollCost || game.ownedCharms.length >= charms.length} onClick={rerollCharms}>리롤 · {game.shopRerollCost}냥</button>
+            <button className="primary-action next-round" onClick={exitShop}>상점 나가기<span>블라인드 선택 화면</span></button>
+          </div>
         </section></div>
       )}
 
