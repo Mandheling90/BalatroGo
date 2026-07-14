@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CardKind, charms, createDeck, HwatuCard, scoreCaptured, shuffle } from './game'
+import { CardKind, charms, HwatuCard, scoreCaptured } from './game'
+import { Card } from './components/game/HwatuCard'
+import { GoStopModal, MatchChoiceModal, RulesModal } from './components/game/GameModals'
+import { blindDefinitions, getBlind } from './game/data/blinds'
+import { getFloorPosition } from './game/engine/floor-layout'
+import { chooseGo, chooseStop } from './game/engine/go-stop'
+import { resolveGameTurn } from './game/engine/resolve-turn'
+import { createNewGame, dealRound } from './game/engine/setup'
+import type { BlindIndex, BlindStatus, GameState } from './game/engine/types'
 
-type Phase = 'blind' | 'playing' | 'shop' | 'gameover'
-type BlindIndex = 0 | 1 | 2
-type BlindStatus = 'pending' | 'cleared' | 'skipped'
 type HandSort = 'month' | 'kind'
 
 const handKindOrder: Record<CardKind, number> = {
@@ -15,184 +20,11 @@ const handKindOrder: Record<CardKind, number> = {
   pi: 3,
 }
 
-const blindDefinitions = [
-  { name: '스몰 블라인드', english: 'SMALL BLIND', icon: '小', targetBonus: 0, reward: 3, color: '#6db7dc' },
-  { name: '빅 블라인드', english: 'BIG BLIND', icon: '大', targetBonus: 2, reward: 5, color: '#e3a94f' },
-  { name: '보스 블라인드', english: 'BOSS BLIND', icon: '王', targetBonus: 4, reward: 8, color: '#df5544' },
-] as const
-
-const getBlind = (ante: number, index: BlindIndex) => ({
-  ...blindDefinitions[index],
-  target: 3 + (ante - 1) * 2 + blindDefinitions[index].targetBonus,
-})
-
-interface GameState {
-  round: number
-  blindIndex: BlindIndex
-  blindHistory: BlindStatus[]
-  target: number
-  coins: number
-  deck: HwatuCard[]
-  hand: HwatuCard[]
-  table: HwatuCard[]
-  captured: HwatuCard[]
-  selected: string | null
-  ownedCharms: string[]
-  phase: Phase
-  pendingPhase: 'shop' | 'gameover' | null
-  message: string
-  lastRevealed: string[]
-  lastCapturedMonths: number[]
-  lastPlayedId: string | null
-  lastSubmittedId: string | null
-  lastCapturedIds: string[]
-  lastMatchTarget: { x: number; y: number } | null
-  ruleBonus: number
-  ruleDetails: string[]
-  shakenMonths: number[]
-  awaitingGoStop: boolean
-  goCount: number
-  goRequiredScore: number
-}
-
-function captureCompleteMonths(table: HwatuCard[]) {
-  const completeMonths = Array.from({ length: 12 }, (_, index) => index + 1)
-    .filter((month) => table.filter((card) => card.month === month).length === 4)
-  return {
-    completeMonths,
-    captured: table.filter((card) => completeMonths.includes(card.month)),
-    table: table.filter((card) => !completeMonths.includes(card.month)),
-  }
-}
-
-function matchPlayedCard(table: HwatuCard[], played: HwatuCard, pickedMatchId?: string) {
-  const matches = table.filter((card) => card.month === played.month)
-
-  if (matches.length === 0) {
-    return { table: [...table, played], captured: [] as HwatuCard[], matched: false, swept: false }
-  }
-
-  if (matches.length === 3) {
-    return {
-      table: table.filter((card) => card.month !== played.month),
-      captured: [played, ...matches],
-      matched: true,
-      swept: true,
-    }
-  }
-
-  const picked = matches.find((card) => card.id === pickedMatchId) ?? matches[0]
-  return {
-    table: table.filter((card) => card.id !== picked.id),
-    captured: [played, picked],
-    matched: true,
-    swept: false,
-  }
-}
-
-function dealRound() {
-  const deck = shuffle(createDeck())
-  const initialTable = deck.slice(0, 8)
-  const initialCapture = captureCompleteMonths(initialTable)
-  return {
-    hand: deck.slice(8, 18),
-    deck: deck.slice(18),
-    table: initialCapture.table,
-    captured: initialCapture.captured,
-    lastCapturedMonths: initialCapture.completeMonths,
-  }
-}
-
-const newGame = (): GameState => ({
-  round: 1,
-  blindIndex: 0,
-  blindHistory: ['pending', 'pending', 'pending'],
-  target: 3,
-  coins: 6,
-  ...dealRound(),
-  selected: null,
-  ownedCharms: [],
-  phase: 'blind',
-  pendingPhase: null,
-  message: '도전할 블라인드를 확인하세요.',
-  lastRevealed: [],
-  lastPlayedId: null,
-  lastSubmittedId: null,
-  lastCapturedIds: [],
-  lastMatchTarget: null,
-  ruleBonus: 0,
-  ruleDetails: [],
-  shakenMonths: [],
-  awaitingGoStop: false,
-  goCount: 0,
-  goRequiredScore: 3,
-})
-
 const categoryCards = (cards: HwatuCard[], category: 'gwang' | 'animal' | 'ribbon' | 'pi') =>
   cards.filter((card) => category === 'ribbon' ? card.kind.startsWith('ribbon') : card.kind === category)
 
-const createBonusPi = (event: string, index: number): HwatuCard => ({
-  id: `bonus-pi-${event}-${Date.now()}-${index}`,
-  definitionId: 'bonus-pi',
-  month: 0,
-  spriteRow: 0,
-  spriteColumn: 2,
-  flower: '보너스',
-  symbol: '피',
-  kind: 'pi',
-  title: `${event} 보너스 피`,
-  chips: 2,
-  piValue: 1,
-})
-
-function getFloorPosition(index: number, total: number) {
-  const outerCount = total > 18 ? Math.ceil(total * 0.64) : total
-  const inner = index >= outerCount
-  const ringIndex = inner ? index - outerCount : index
-  const ringCount = inner ? total - outerCount : outerCount
-  const angle = -Math.PI / 2 + (Math.PI * 2 * ringIndex) / Math.max(1, ringCount)
-  const radiusX = inner ? 26 : 43
-  const radiusY = inner ? 19 : 31
-  return {
-    x: 50 + Math.cos(angle) * radiusX,
-    y: 50 + Math.sin(angle) * radiusY,
-  }
-}
-
-function Card({ card, selected = false, compact = false, revealed = false, slapped = false, flyToScore = false, submittedCapture = false, effectIndex = 0, effectDelayMs, onClick }: {
-  card: HwatuCard
-  selected?: boolean
-  compact?: boolean
-  revealed?: boolean
-  slapped?: boolean
-  flyToScore?: boolean
-  submittedCapture?: boolean
-  effectIndex?: number
-  effectDelayMs?: number
-  onClick?: () => void
-}) {
-  const Tag = onClick ? 'button' : 'div'
-  return (
-    <Tag
-      className={`hwatu-card kind-${card.kind} ${selected ? 'selected' : ''} ${compact ? 'compact' : ''} ${revealed ? 'revealed' : ''} ${slapped ? 'slapped' : ''} ${flyToScore ? 'fly-to-score' : ''} ${submittedCapture ? 'submitted-capture' : ''}`}
-      onClick={onClick}
-      aria-pressed={onClick ? selected : undefined}
-      style={{
-        '--sprite-position': `${(card.spriteColumn / 7) * 100}% ${(card.spriteRow / 5) * 100}%`,
-        '--effect-index': effectIndex,
-        '--effect-delay': `${effectDelayMs ?? effectIndex * 45}ms`,
-        '--fly-offset': `${(effectIndex - 1.5) * 16}px`,
-      } as React.CSSProperties}
-    >
-      <span className="month">{card.month}월</span>
-      <span className="plant">{card.symbol}</span>
-      <span className="flower">{card.flower}</span>
-    </Tag>
-  )
-}
-
 function App() {
-  const [game, setGame] = useState<GameState>(newGame)
+  const [game, setGame] = useState<GameState>(createNewGame)
   const [showRules, setShowRules] = useState(false)
   const [matchChoice, setMatchChoice] = useState<{ playedId: string; matchIds: string[] } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
@@ -275,117 +107,7 @@ function App() {
     setMatchChoice(null)
     setIsResolving(true)
     window.setTimeout(() => setIsResolving(false), 2700)
-    setGame((current) => {
-      const played = current.hand.find((card) => card.id === current.selected)
-      if (!played) return current
-
-      const revealed = current.deck.slice(0, 2)
-      const firstRevealed = revealed[0]
-      const secondRevealed = revealed[1]
-      const sameMonthHand = current.hand.filter((card) => card.month === played.month)
-      const originalMatches = current.table.filter((card) => card.month === played.month)
-      const isBomb = sameMonthHand.length === 3 && originalMatches.length === 1
-      const playedCards = isBomb ? sameMonthHand : [played]
-      const playedIds = new Set(playedCards.map((card) => card.id))
-      const remainingHand = current.hand.filter((card) => !playedIds.has(card.id))
-      const isPeok = !isBomb && originalMatches.length === 1 && firstRevealed?.month === played.month
-      const playerMatch = isPeok
-        ? { table: [...current.table, played, firstRevealed], captured: [] as HwatuCard[], matched: false, swept: false }
-        : isBomb
-          ? {
-              table: current.table.filter((card) => card.id !== originalMatches[0].id),
-              captured: [...playedCards, originalMatches[0]],
-              matched: true,
-              swept: true,
-            }
-          : matchPlayedCard(current.table, played, pickedMatchId)
-      const deckMatch = firstRevealed
-        ? isPeok
-          ? { table: playerMatch.table, captured: [] as HwatuCard[], matched: false, swept: false }
-          : matchPlayedCard(playerMatch.table, firstRevealed)
-        : { table: playerMatch.table, captured: [] as HwatuCard[], matched: false, swept: false }
-      const secondMatches = secondRevealed
-        ? deckMatch.table.filter((card) => card.month === secondRevealed.month)
-        : []
-      const alreadyCapturedSameMonth = secondRevealed
-        ? current.captured.filter((card) => card.month === secondRevealed.month).length
-        : 0
-      const secondExceptionCapture = secondRevealed
-        && alreadyCapturedSameMonth > 0
-        && alreadyCapturedSameMonth + secondMatches.length + 1 === 4
-        ? [secondRevealed, ...secondMatches]
-        : []
-      const tableAfterReveal = secondExceptionCapture.length
-        ? deckMatch.table.filter((card) => card.month !== secondRevealed!.month)
-        : secondRevealed ? [...deckMatch.table, secondRevealed] : deckMatch.table
-      const matchTarget = getFloorPosition(played.month - 1, 12)
-      const capturedFromTable = [...playerMatch.captured, ...deckMatch.captured, ...secondExceptionCapture]
-      const isTtadak = !isPeok && !isBomb && originalMatches.length === 2 && firstRevealed?.month === played.month
-      const isPeokRecovery = !isBomb && originalMatches.length === 3
-      const isSweep = current.table.length > 0
-        && (deckMatch.table.length === 0 || tableAfterReveal.length === 0)
-        && capturedFromTable.length > 0
-      const isShake = !isBomb && sameMonthHand.length === 3 && !current.shakenMonths.includes(played.month)
-      const piRewardEvents = [
-        ...(isBomb ? ['폭탄'] : []),
-        ...(isTtadak ? ['따닥'] : []),
-        ...(isPeokRecovery ? ['뻑 먹기'] : []),
-        ...(isSweep ? ['쓸'] : []),
-      ]
-      const bonusPiCards = piRewardEvents.map(createBonusPi)
-      const newlyCaptured = [...capturedFromTable, ...bonusPiCards]
-      const captured = [...current.captured, ...newlyCaptured]
-      const nextRuleBonus = current.ruleBonus + (isShake ? 1 : 0)
-      const nextRuleDetails = isShake
-        ? [...current.ruleDetails, '흔들기 +1점']
-        : current.ruleDetails
-      const nextScore = scoreCaptured(captured, current.ownedCharms, nextRuleBonus, nextRuleDetails)
-      const reachedGoTarget = nextScore.total >= current.goRequiredScore
-      const failed = !reachedGoTarget && remainingHand.length === 0
-      const resultMessages: string[] = []
-      if (isPeok) resultMessages.push(`${played.month}월 뻑! 세 장이 바닥에 묶였습니다.`)
-      else if (isBomb) resultMessages.push(`${played.month}월 폭탄! 손패 세 장과 바닥패를 한꺼번에 가져왔습니다.`)
-      else if (playerMatch.swept) resultMessages.push(`${played.month}월 네 장을 한꺼번에 가져왔습니다!`)
-      else if (playerMatch.matched) resultMessages.push(`${played.month}월 짝을 맞춰 2장을 가져왔습니다.`)
-      if (deckMatch.swept && firstRevealed) resultMessages.push(`뒤집은 ${firstRevealed.month}월 패로 네 장을 모두 가져왔습니다!`)
-      else if (deckMatch.matched && firstRevealed) resultMessages.push(`뒤집은 ${firstRevealed.month}월 패가 맞아 득점패로 가져왔습니다.`)
-      if (secondExceptionCapture.length && secondRevealed) resultMessages.push(`이미 획득한 ${secondRevealed.month}월의 남은 두 장이 모여 함께 가져왔습니다.`)
-      if (isTtadak) resultMessages.push('따닥! 같은 월 네 장을 한 차례에 가져왔습니다.')
-      if (isPeokRecovery) resultMessages.push('뻑 먹기 성공!')
-      if (isShake) resultMessages.push(`${played.month}월 세 장을 흔들었습니다.`)
-      if (isSweep) resultMessages.push('쓸! 바닥패를 모두 가져왔습니다.')
-      if (piRewardEvents.length) resultMessages.push(`${piRewardEvents.join('·')} 보너스로 피 ${piRewardEvents.length}장을 받았습니다.`)
-      if (!resultMessages.length) resultMessages.push('맞는 월이 없습니다. 바닥에 패를 놓았습니다.')
-      const capturedCopy = resultMessages.join(' ')
-
-      return {
-        ...current,
-        hand: remainingHand,
-        deck: current.deck.slice(2),
-        table: tableAfterReveal,
-        captured,
-        selected: null,
-        phase: 'playing',
-        pendingPhase: failed ? 'gameover' : null,
-        awaitingGoStop: reachedGoTarget,
-        message: reachedGoTarget
-          ? `${capturedCopy} 필요 점수 ${current.goRequiredScore}점을 달성했습니다. 고 또는 스톱을 선택하세요.`
-          : failed ? `마지막 턴이 끝났습니다. ${capturedCopy}` : capturedCopy,
-        lastRevealed: revealed.map((card) => card.id),
-        lastCapturedMonths: Array.from(new Set([
-          ...(playerMatch.matched ? [played.month] : []),
-          ...(deckMatch.matched && firstRevealed ? [firstRevealed.month] : []),
-          ...(secondExceptionCapture.length && secondRevealed ? [secondRevealed.month] : []),
-        ])),
-        lastPlayedId: playerMatch.matched ? null : played.id,
-        lastSubmittedId: played.id,
-        lastCapturedIds: newlyCaptured.map((card) => card.id),
-        lastMatchTarget: matchTarget,
-        ruleBonus: nextRuleBonus,
-        ruleDetails: nextRuleDetails,
-        shakenMonths: isShake ? [...current.shakenMonths, played.month] : current.shakenMonths,
-      }
-    })
+    setGame((current) => resolveGameTurn(current, pickedMatchId))
   }
 
   const playTurn = () => {
@@ -427,42 +149,9 @@ function App() {
     })
   }
 
-  const chooseGo = () => {
-    setGame((current) => {
-      if (!current.awaitingGoStop) return current
-      const currentScore = scoreCaptured(current.captured, current.ownedCharms, current.ruleBonus, current.ruleDetails).total
-      const reward = 2 + current.goCount
-      const noTurnsLeft = current.hand.length === 0
-      return {
-        ...current,
-        awaitingGoStop: false,
-        goCount: current.goCount + 1,
-        goRequiredScore: currentScore + 1,
-        coins: current.coins + reward,
-        phase: noTurnsLeft ? 'gameover' : 'playing',
-        message: noTurnsLeft
-          ? `고 보상 ${reward}냥을 받았지만 더 낼 패가 없어 게임오버입니다.`
-          : `${current.goCount + 1}고! ${reward}냥을 받고 다음 필요 점수는 ${currentScore + 1}점입니다.`,
-      }
-    })
-  }
+  const handleGo = () => setGame(chooseGo)
 
-  const chooseStop = () => {
-    setGame((current) => {
-      if (!current.awaitingGoStop) return current
-      const history = [...current.blindHistory]
-      history[current.blindIndex] = 'cleared'
-      const blind = getBlind(current.round, current.blindIndex)
-      return {
-        ...current,
-        awaitingGoStop: false,
-        blindHistory: history,
-        coins: current.coins + blind.reward + current.hand.length,
-        phase: 'shop',
-        message: `${current.goCount}고에서 스톱! 블라인드를 클리어했습니다.`,
-      }
-    })
-  }
+  const handleStop = () => setGame(chooseStop)
 
   const skipBlind = () => {
     if (game.blindIndex === 2) return
@@ -734,19 +423,7 @@ function App() {
       </div>
       )}
 
-      {game.awaitingGoStop && (
-        <div className="overlay go-stop-overlay">
-          <section className="go-stop-modal">
-            <span className="eyebrow">목표 점수 달성</span>
-            <h2>고 또는 스톱</h2>
-            <p>현재 {score.total}점 · {game.goCount}고</p>
-            <div className="go-stop-actions">
-              <button className="go-button" onClick={chooseGo}>고<span>{2 + game.goCount}냥 획득 · 다음 {score.total + 1}점</span></button>
-              <button className="stop-button" onClick={chooseStop}>스톱<span>블라인드 클리어</span></button>
-            </div>
-          </section>
-        </div>
-      )}
+      {game.awaitingGoStop && <GoStopModal score={score.total} goCount={game.goCount} onGo={handleGo} onStop={handleStop} />}
 
       {game.phase === 'shop' && (
         <div className="overlay"><section className="shop-modal">
@@ -770,42 +447,17 @@ function App() {
         <div className="overlay"><section className="result-modal">
           <span className="stamp">敗</span><p>{currentBlind.name} 실패</p><h2>앤티 {game.round} · {score.total}점</h2>
           <p>목표 {game.target}점까지 {game.target - score.total}점이 모자랐습니다.</p>
-          <button className="primary-action" onClick={() => setGame(newGame())}>새 판 시작</button>
+          <button className="primary-action" onClick={() => setGame(createNewGame())}>새 판 시작</button>
         </section></div>
       )}
 
-      {showRules && (
-        <div className="overlay" onClick={() => setShowRules(false)}><section className="rules-modal" onClick={(event) => event.stopPropagation()}>
-          <button className="close" onClick={() => setShowRules(false)}>×</button>
-          <span className="eyebrow">게임 방법</span><h2>같은 월을 맞춰 점수패 획득</h2>
-          <ol className="how-to"><li>손패에서 한 장을 골라 바닥에 놓습니다.</li><li>바닥에 같은 월 패가 있으면 낸 패와 짝을 즉시 가져옵니다.</li><li>같은 월 바닥패가 두 장이면 가져갈 한 장을 직접 선택합니다.</li><li>차례를 넘기면 덱에서 두 장이 차례대로 펼쳐집니다.</li><li>쌍피는 피 2장으로 계산합니다.</li><li>따닥·쓸·뻑 먹기·폭탄은 보너스 피 1장, 흔들기는 보너스 1점입니다.</li><li>필요 점수 달성 후 스톱하면 클리어, 고하면 엽전을 받고 1점을 더 내야 합니다.</li><li>고 이후 추가 점수를 내지 못한 채 손패가 끝나면 게임오버입니다.</li></ol>
-          <div className="rules-grid">
-            {[['오광 / 사광 / 삼광', '광 5 / 4 / 3장'], ['고도리', '2·4·8월 새 열끗 · 5점'], ['홍단', '1·2·3월 홍단 · 3점'], ['청단', '6·9·10월 청단 · 3점'], ['초단', '4·5·7월 초단 · 3점'], ['열끗', '5장부터 1점'], ['띠', '5장부터 1점'], ['피', '쌍피 포함 10장부터 1점']].map(([name, rule]) => <div key={name}><strong>{name}</strong><span>{rule}</span></div>)}
-          </div>
-        </section></div>
-      )}
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       {matchChoice && (() => {
         const played = game.hand.find((card) => card.id === matchChoice.playedId)
         const candidates = game.table.filter((card) => matchChoice.matchIds.includes(card.id))
         if (!played) return null
-        return (
-          <div className="match-choice-backdrop">
-            <section className="match-choice-panel">
-              <span className="eyebrow">같은 월 두 장</span>
-              <h2>{played.month}월 패를 선택하세요</h2>
-              <p>낸 패와 함께 가져올 바닥패 한 장을 고르세요.</p>
-              <div className="match-choice-cards">
-                {candidates.map((card) => (
-                  <button key={card.id} onClick={() => resolveTurn(card.id)}>
-                    <Card card={card} />
-                  </button>
-                ))}
-              </div>
-              <button className="cancel-choice" onClick={() => setMatchChoice(null)}>다시 생각하기</button>
-            </section>
-          </div>
-        )
+        return <MatchChoiceModal played={played} candidates={candidates} onChoose={resolveTurn} onCancel={() => setMatchChoice(null)} />
       })()}
     </main>
   )
