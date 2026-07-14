@@ -809,6 +809,30 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .match-choice-cards span, .cancel-choice { font-size: 6px; }
 }
 
+/* 주소창이 펼쳐진 낮은 모바일 가로 화면 */
+@media (max-width: 950px) and (orientation: landscape) and (max-height: 430px) {
+  .capture-board { grid-template-rows: minmax(0, 1fr) 58px 72px; }
+  .capture-game .player-hand .hwatu-card { width: clamp(34px, 5vw, 43px); }
+  .capture-game .player-hand .hwatu-card.selected,
+  .capture-game .player-hand .hwatu-card.selected:hover { transform: translateY(-6px); }
+  .player-hand { padding-right: 88px; }
+  .play-turn { width: 72px; min-height: 30px; bottom: 2px; }
+  .hand-sort { width: 72px; bottom: 35px; }
+  .hand-sort button { min-height: 14px; }
+  .won-pile { padding-top: 3px; padding-bottom: 3px; }
+  .won-group > div { padding-top: 10px; }
+}
+
+@media (max-width: 950px) and (orientation: landscape) and (max-height: 350px) {
+  .capture-layout { gap: 3px; padding-top: 3px; padding-bottom: max(3px, env(safe-area-inset-bottom)); }
+  .capture-board { grid-template-rows: minmax(0, 1fr) 48px 60px; gap: 3px; }
+  .capture-game .player-hand .hwatu-card { width: clamp(29px, 4.4vw, 36px); }
+  .play-turn { width: 66px; min-height: 25px; font-size: 6px; }
+  .hand-sort { width: 66px; bottom: 29px; }
+  .hand-sort button { min-height: 11px; font-size: 5px; }
+  .won-group .compact { width: 13px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hwatu-card.revealed,
   .hwatu-card.slapped,

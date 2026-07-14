@@ -194,6 +194,7 @@ function App() {
   const matchedTargetCards = game.captured.filter((card) =>
     game.lastCapturedIds.includes(card.id) && card.id !== game.lastSubmittedId,
   )
+  const capturedRevealedCards = game.captured.filter((card) => game.lastRevealed.includes(card.id))
 
   useEffect(() => {
     const tryLandscapeLock = () => {
@@ -266,9 +267,14 @@ function App() {
       const revealed = current.deck.slice(0, 2)
       const remainingHand = current.hand.filter((card) => card.id !== played.id)
       const playerMatch = matchPlayedCard(current.table, played, pickedMatchId)
-      const afterCapture = captureCompleteMonths([...playerMatch.table, ...revealed])
+      const firstRevealed = revealed[0]
+      const secondRevealed = revealed[1]
+      const deckMatch = firstRevealed
+        ? matchPlayedCard(playerMatch.table, firstRevealed)
+        : { table: playerMatch.table, captured: [] as HwatuCard[], matched: false, swept: false }
+      const tableAfterReveal = secondRevealed ? [...deckMatch.table, secondRevealed] : deckMatch.table
       const matchTarget = getFloorPosition(played.month - 1, 12)
-      const newlyCaptured = [...playerMatch.captured, ...afterCapture.captured]
+      const newlyCaptured = [...playerMatch.captured, ...deckMatch.captured]
       const captured = [...current.captured, ...newlyCaptured]
       const nextScore = scoreCaptured(captured, current.ownedCharms)
       const cleared = nextScore.total >= current.target
@@ -279,7 +285,8 @@ function App() {
       const resultMessages: string[] = []
       if (playerMatch.swept) resultMessages.push(`${played.month}월 네 장을 한꺼번에 가져왔습니다!`)
       else if (playerMatch.matched) resultMessages.push(`${played.month}월 짝을 맞춰 2장을 가져왔습니다.`)
-      if (afterCapture.completeMonths.length) resultMessages.push(`${afterCapture.completeMonths.join('·')}월 네 장이 펼쳐져 모두 가져왔습니다!`)
+      if (deckMatch.swept && firstRevealed) resultMessages.push(`뒤집은 ${firstRevealed.month}월 패로 네 장을 모두 가져왔습니다!`)
+      else if (deckMatch.matched && firstRevealed) resultMessages.push(`뒤집은 ${firstRevealed.month}월 패가 맞아 득점패로 가져왔습니다.`)
       if (!resultMessages.length) resultMessages.push('맞는 월이 없습니다. 바닥에 패를 놓았습니다.')
       const capturedCopy = resultMessages.join(' ')
 
@@ -287,7 +294,7 @@ function App() {
         ...current,
         hand: remainingHand,
         deck: current.deck.slice(2),
-        table: afterCapture.table,
+        table: tableAfterReveal,
         captured,
         selected: null,
         phase: 'playing',
@@ -300,7 +307,7 @@ function App() {
         lastRevealed: revealed.map((card) => card.id),
         lastCapturedMonths: Array.from(new Set([
           ...(playerMatch.matched ? [played.month] : []),
-          ...afterCapture.completeMonths,
+          ...(deckMatch.matched && firstRevealed ? [firstRevealed.month] : []),
         ])),
         lastPlayedId: playerMatch.matched ? null : played.id,
         lastSubmittedId: played.id,
@@ -495,6 +502,27 @@ function App() {
               <div className="center-deck" aria-label={`뒤집지 않은 패 ${game.deck.length}장`}>
                 <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
               </div>
+              {isResolving && capturedRevealedCards.map((card) => {
+                const position = getFloorPosition(card.month - 1, 12)
+                const revealIndex = game.lastRevealed.indexOf(card.id)
+                return (
+                  <div
+                    className="loose-card dealt-from-deck"
+                    key={`revealed-flight-${card.id}`}
+                    style={{
+                      '--floor-x': `${position.x}%`,
+                      '--floor-y': `${position.y}%`,
+                      '--stack-x': '0px',
+                      '--stack-y': '0px',
+                      '--scatter-shift': '0px',
+                      '--scatter-rotate': '0deg',
+                      '--deal-delay': `${360 + revealIndex * 900}ms`,
+                    } as React.CSSProperties}
+                  >
+                    <Card card={card} compact />
+                  </div>
+                )
+              })}
               {isResolving && game.lastMatchTarget && matchedTargetCards.length > 0 && (
                 <div
                   className="match-target-ghost"
@@ -571,7 +599,7 @@ function App() {
                 const cards = categoryCards(game.captured, group.key)
                 const visibleCards = cards.slice(-4)
                 const hiddenCount = cards.length - visibleCards.length
-                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={550} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
+                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={game.lastRevealed.includes(card.id) ? 1200 : 550} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
               })}
             </div>
           </section>
