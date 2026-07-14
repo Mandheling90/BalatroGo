@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CardKind, charms, createDeck, HwatuCard, kindLabel, scoreCaptured, shuffle } from './game'
 
 type Phase = 'blind' | 'playing' | 'shop' | 'gameover'
@@ -39,12 +40,14 @@ interface GameState {
   selected: string | null
   ownedCharms: string[]
   phase: Phase
+  pendingPhase: 'shop' | 'gameover' | null
   message: string
   lastRevealed: string[]
   lastCapturedMonths: number[]
   lastPlayedId: string | null
   lastSubmittedId: string | null
   lastCapturedIds: string[]
+  lastMatchTarget: { x: number; y: number } | null
 }
 
 function captureCompleteMonths(table: HwatuCard[]) {
@@ -105,11 +108,13 @@ const newGame = (): GameState => ({
   selected: null,
   ownedCharms: [],
   phase: 'blind',
+  pendingPhase: null,
   message: '도전할 블라인드를 확인하세요.',
   lastRevealed: [],
   lastPlayedId: null,
   lastSubmittedId: null,
   lastCapturedIds: [],
+  lastMatchTarget: null,
 })
 
 const categoryCards = (cards: HwatuCard[], category: 'gwang' | 'animal' | 'ribbon' | 'pi') =>
@@ -169,6 +174,7 @@ function App() {
   const [matchChoice, setMatchChoice] = useState<{ playedId: string; matchIds: string[] } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
   const [isResolving, setIsResolving] = useState(false)
+  const [submitFlight, setSubmitFlight] = useState({ fromX: 0, fromY: 0, toX: 0, toY: 0 })
   const score = useMemo(() => scoreCaptured(game.captured, game.ownedCharms), [game.captured, game.ownedCharms])
   const currentBlind = getBlind(game.round, game.blindIndex)
   const selectedMonth = game.hand.find((card) => card.id === game.selected)?.month
@@ -184,6 +190,10 @@ function App() {
     month: index + 1,
     cards: game.table.filter((card) => card.month === index + 1),
   })).filter((group) => group.cards.length > 0), [game.table])
+  const submittedAnimationCard = [...game.table, ...game.captured].find((card) => card.id === game.lastSubmittedId)
+  const matchedTargetCards = game.captured.filter((card) =>
+    game.lastCapturedIds.includes(card.id) && card.id !== game.lastSubmittedId,
+  )
 
   useEffect(() => {
     const tryLandscapeLock = () => {
@@ -197,16 +207,58 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const viewport = window.visualViewport
+    const syncViewportHeight = () => {
+      const height = viewport?.height ?? window.innerHeight
+      document.documentElement.style.setProperty('--visual-viewport-height', `${Math.round(height)}px`)
+    }
+    syncViewportHeight()
+    viewport?.addEventListener('resize', syncViewportHeight)
+    viewport?.addEventListener('scroll', syncViewportHeight)
+    window.addEventListener('orientationchange', syncViewportHeight)
+    return () => {
+      viewport?.removeEventListener('resize', syncViewportHeight)
+      viewport?.removeEventListener('scroll', syncViewportHeight)
+      window.removeEventListener('orientationchange', syncViewportHeight)
+      document.documentElement.style.removeProperty('--visual-viewport-height')
+    }
+  }, [])
+
+  useEffect(() => {
     if (!game.lastPlayedId && !game.lastCapturedIds.length) return
     if ('vibrate' in navigator) {
       navigator.vibrate(game.lastCapturedIds.length ? [18, 22, 32] : 18)
     }
   }, [game.lastPlayedId, game.lastCapturedIds])
 
+  useEffect(() => {
+    if (!game.pendingPhase) return
+    const timer = window.setTimeout(() => {
+      setGame((current) => current.pendingPhase
+        ? { ...current, phase: current.pendingPhase, pendingPhase: null }
+        : current)
+    }, 2200)
+    return () => window.clearTimeout(timer)
+  }, [game.pendingPhase])
+
   const resolveTurn = (pickedMatchId?: string) => {
+    const floor = document.querySelector<HTMLElement>('.floor-spread')
+    const selectedCard = document.querySelector<HTMLElement>('.player-hand .hwatu-card[aria-pressed="true"]')
+    const previewPlayed = game.hand.find((card) => card.id === game.selected)
+    if (floor && selectedCard && previewPlayed) {
+      const floorRect = floor.getBoundingClientRect()
+      const cardRect = selectedCard.getBoundingClientRect()
+      const previewTarget = getFloorPosition(previewPlayed.month - 1, 12)
+      setSubmitFlight({
+        fromX: cardRect.left + cardRect.width / 2,
+        fromY: cardRect.top + cardRect.height / 2,
+        toX: floorRect.left + floorRect.width * previewTarget.x / 100,
+        toY: floorRect.top + floorRect.height * previewTarget.y / 100,
+      })
+    }
     setMatchChoice(null)
     setIsResolving(true)
-    window.setTimeout(() => setIsResolving(false), 1100)
+    window.setTimeout(() => setIsResolving(false), 2200)
     setGame((current) => {
       const played = current.hand.find((card) => card.id === current.selected)
       if (!played) return current
@@ -215,6 +267,7 @@ function App() {
       const remainingHand = current.hand.filter((card) => card.id !== played.id)
       const playerMatch = matchPlayedCard(current.table, played, pickedMatchId)
       const afterCapture = captureCompleteMonths([...playerMatch.table, ...revealed])
+      const matchTarget = getFloorPosition(played.month - 1, 12)
       const newlyCaptured = [...playerMatch.captured, ...afterCapture.captured]
       const captured = [...current.captured, ...newlyCaptured]
       const nextScore = scoreCaptured(captured, current.ownedCharms)
@@ -237,7 +290,8 @@ function App() {
         table: afterCapture.table,
         captured,
         selected: null,
-        phase: cleared ? 'shop' : failed ? 'gameover' : 'playing',
+        phase: 'playing',
+        pendingPhase: cleared ? 'shop' : failed ? 'gameover' : null,
         coins: cleared ? current.coins + blind.reward + remainingHand.length : current.coins,
         blindHistory: cleared ? clearedHistory : current.blindHistory,
         message: cleared
@@ -251,6 +305,7 @@ function App() {
         lastPlayedId: playerMatch.matched ? null : played.id,
         lastSubmittedId: played.id,
         lastCapturedIds: newlyCaptured.map((card) => card.id),
+        lastMatchTarget: matchTarget,
       }
     })
   }
@@ -277,11 +332,13 @@ function App() {
         target: blind.target,
         selected: null,
         phase: 'playing',
+        pendingPhase: null,
         message: `${blind.name} 시작. 손패 한 장을 골라 바닥에 놓으세요.`,
         lastRevealed: [],
         lastPlayedId: null,
         lastSubmittedId: null,
         lastCapturedIds: [],
+        lastMatchTarget: null,
       }
     })
   }
@@ -322,11 +379,13 @@ function App() {
         : { blindIndex: (current.blindIndex + 1) as BlindIndex }),
       selected: null,
       phase: 'blind',
+      pendingPhase: null,
       message: current.blindIndex === 2 ? '새 앤티가 열렸습니다.' : '다음 블라인드를 선택하세요.',
       lastRevealed: [],
       lastPlayedId: null,
       lastSubmittedId: null,
       lastCapturedIds: [],
+      lastMatchTarget: null,
     }))
   }
 
@@ -436,11 +495,24 @@ function App() {
               <div className="center-deck" aria-label={`뒤집지 않은 패 ${game.deck.length}장`}>
                 <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
               </div>
-              {floorGroups.map((group, groupIndex) => {
-                const position = getFloorPosition(groupIndex, floorGroups.length)
+              {isResolving && game.lastMatchTarget && matchedTargetCards.length > 0 && (
+                <div
+                  className="match-target-ghost"
+                  style={{
+                    '--match-x': `${game.lastMatchTarget.x}%`,
+                    '--match-y': `${game.lastMatchTarget.y}%`,
+                  } as React.CSSProperties}
+                >
+                  {matchedTargetCards.map((card, index) => (
+                    <Card card={card} compact effectIndex={index} key={card.id} />
+                  ))}
+                </div>
+              )}
+              {floorGroups.map((group) => {
+                const position = getFloorPosition(group.month - 1, 12)
                 return group.cards.map((card, stackIndex) => (
                 <div
-                  className={`loose-card ${group.cards.length > 1 ? 'same-month-stack' : ''} ${group.cards.length === 3 ? 'almost-set' : ''} ${selectedMonth === card.month ? 'can-capture' : ''}`}
+                  className={`loose-card ${isResolving && game.lastPlayedId === card.id ? 'submitted-floor-placeholder' : ''} ${game.lastRevealed.includes(card.id) ? 'dealt-from-deck' : ''} ${group.cards.length > 1 ? 'same-month-stack' : ''} ${group.cards.length === 3 ? 'almost-set' : ''} ${selectedMonth === card.month ? 'can-capture' : ''}`}
                   key={card.id}
                   style={{
                     '--floor-x': `${position.x}%`,
@@ -448,17 +520,17 @@ function App() {
                     '--stack-x': `${stackIndex * 9}px`,
                     '--stack-y': `${stackIndex * 4}px`,
                     '--stack-order': stackIndex + 1,
-                    '--scatter-rotate': `${((groupIndex * 7 + card.month * 3 + stackIndex * 2) % 7) - 3}deg`,
-                    '--scatter-shift': `${((groupIndex * 11) % 5) - 2}px`,
+                    '--scatter-rotate': `${((group.month * 10 + stackIndex * 2) % 7) - 3}deg`,
+                    '--scatter-shift': `${((group.month * 11) % 5) - 2}px`,
+                    '--deal-delay': `${360 + Math.max(0, game.lastRevealed.indexOf(card.id)) * 900}ms`,
                   } as React.CSSProperties}
                 >
                   <Card
                     card={card}
                     compact
                     revealed={game.lastRevealed.includes(card.id)}
-                    slapped={game.lastPlayedId === card.id}
                     effectIndex={Math.max(0, game.lastRevealed.indexOf(card.id))}
-                    effectDelayMs={(game.lastCapturedIds.length ? 780 : 360) + Math.max(0, game.lastRevealed.indexOf(card.id)) * 130}
+                    effectDelayMs={(game.lastCapturedIds.length ? 1120 : 360) + Math.max(0, game.lastRevealed.indexOf(card.id)) * 900}
                   />
                   {stackIndex === group.cards.length - 1 && <span>{card.month}월 · {group.cards.length}장</span>}
                 </div>
@@ -467,7 +539,14 @@ function App() {
               {!game.table.length && <div className="empty-floor">가져간 패가 놓였던 자리입니다</div>}
             </div>
             {!!game.lastCapturedIds.length && (
-              <div className="capture-impact" key={game.lastCapturedIds.join('-')}>
+              <div
+                className="capture-impact"
+                key={game.lastCapturedIds.join('-')}
+                style={game.lastMatchTarget ? {
+                  '--impact-x': `${game.lastMatchTarget.x}%`,
+                  '--impact-y': `${game.lastMatchTarget.y}%`,
+                } as React.CSSProperties : undefined}
+              >
                 <i></i><strong>획득!</strong>
               </div>
             )}
@@ -492,11 +571,25 @@ function App() {
                 const cards = categoryCards(game.captured, group.key)
                 const visibleCards = cards.slice(-4)
                 const hiddenCount = cards.length - visibleCards.length
-                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} submittedCapture={card.id === game.lastSubmittedId && game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={0} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
+                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={550} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
               })}
             </div>
           </section>
         </section>
+        {isResolving && game.lastMatchTarget && submittedAnimationCard && createPortal(
+          <div
+            className="submitted-card-flight"
+            style={{
+              '--submit-x': `${submitFlight.fromX}px`,
+              '--submit-y': `${submitFlight.fromY}px`,
+              '--match-x': `${submitFlight.toX}px`,
+              '--match-y': `${submitFlight.toY}px`,
+            } as React.CSSProperties}
+          >
+            <Card card={submittedAnimationCard} />
+          </div>,
+          document.body,
+        )}
       </div>
       )}
 

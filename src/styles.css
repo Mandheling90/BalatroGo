@@ -210,10 +210,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .hwatu-card.compact .flower { display: none; }
 .hwatu-card.revealed {
   z-index: 4;
-  animation: revealSlap .38s cubic-bezier(.18, .88, .28, 1.25) both;
-  animation-delay: var(--effect-delay);
   box-shadow: 0 0 0 2px #f2c55e, 0 8px 17px rgba(0,0,0,.45);
-  will-change: transform, opacity;
 }
 .hwatu-card.slapped {
   z-index: 5;
@@ -260,29 +257,18 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .won-group .compact .plant { font-size: 23px; }
 .won-group > div > i { color: #354039; font-size: 9px; font-style: normal; }
 .won-more { z-index: 4; min-width: 23px; height: 23px; display: grid; place-items: center; margin-left: -6px; color: #17130a; background: #e9bd59; border: 2px solid #0c140f; border-radius: 50%; font-size: 7px; font-style: normal; font-weight: 900; box-shadow: 0 3px 8px rgba(0,0,0,.45); }
-.won-group.just-scored { animation: scorePileKick .4s .62s cubic-bezier(.2, .9, .3, 1.3) both; border-color: #d9ae52; }
+.won-group.just-scored { animation: scorePileKick .4s 1s cubic-bezier(.2, .9, .3, 1.3) both; border-color: #d9ae52; }
 .won-group .hwatu-card.fly-to-score {
   position: relative;
   z-index: 8;
-  animation: floorToScore .74s cubic-bezier(.16, .82, .25, 1.08) both;
+  animation: floorToScore .52s cubic-bezier(.16, .82, .25, 1.08) both;
   animation-delay: var(--effect-delay);
   will-change: transform, opacity;
 }
 @keyframes floorToScore {
-  0%, 45% { opacity: 1; transform: translate(var(--fly-offset), -24vh) rotate(-4deg) scale(1.42); }
-  52% { transform: translate(var(--fly-offset), calc(-24vh + 4px)) rotate(2deg) scale(1.34); }
-  78% { transform: translate(0, 4px) rotate(3deg) scale(.93); }
-  90% { transform: translateY(-3px) rotate(-1deg) scale(1.06); }
-  100% { opacity: 1; transform: translate(0) rotate(0) scale(1); }
-}
-.won-group .hwatu-card.fly-to-score.submitted-capture { animation-name: submitMatchAndScore; }
-@keyframes submitMatchAndScore {
-  0% { opacity: 1; transform: translate(var(--fly-offset), 12vh) rotate(-9deg) scale(1.55); }
-  34% { transform: translate(var(--fly-offset), -24vh) rotate(2deg) scale(1.48); }
-  43% { transform: translate(var(--fly-offset), calc(-24vh + 5px)) rotate(-1deg) scale(1.35); }
-  52% { transform: translate(var(--fly-offset), -24vh) rotate(0) scale(1.42); }
-  78% { transform: translate(0, 4px) rotate(3deg) scale(.93); }
-  90% { transform: translateY(-3px) rotate(-1deg) scale(1.06); }
+  0% { opacity: 1; transform: translate(var(--fly-offset), -24vh) rotate(-3deg) scale(1.42); }
+  68% { transform: translate(0, 4px) rotate(3deg) scale(.93); }
+  84% { transform: translateY(-3px) rotate(-1deg) scale(1.06); }
   100% { opacity: 1; transform: translate(0) rotate(0) scale(1); }
 }
 @keyframes scorePileKick {
@@ -290,15 +276,15 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   55% { transform: scale(1.045); box-shadow: 0 0 18px rgba(234, 190, 84, .38); }
   100% { transform: scale(1); box-shadow: none; }
 }
-.score-pop { display: inline-block; animation: scoreNumberPop .38s .62s cubic-bezier(.2, .95, .25, 1.4) both; }
+.score-pop { display: inline-block; animation: scoreNumberPop .38s 1s cubic-bezier(.2, .95, .25, 1.4) both; }
 @keyframes scoreNumberPop {
   0% { opacity: 0; transform: scale(.7) translateY(5px); color: #fff; }
   58% { transform: scale(1.32) translateY(-3px); color: #fff1a4; text-shadow: 0 0 15px #eab84e; }
   100% { opacity: 1; transform: scale(1); color: #f1ca63; text-shadow: none; }
 }
-.capture-impact { position: absolute; left: 50%; top: 50%; z-index: 9; width: 90px; height: 90px; display: grid; place-items: center; transform: translate(-50%, -50%); pointer-events: none; }
-.capture-impact i { position: absolute; inset: 0; border: 3px solid #f0c45a; border-radius: 50%; animation: impactRing .46s .24s ease-out both; }
-.capture-impact strong { color: #ffdc75; font: 800 14px 'Gowun Batang'; text-shadow: 0 2px 4px #000; animation: impactWord .5s .24s ease-out both; }
+.capture-impact { position: absolute; left: var(--impact-x, 50%); top: var(--impact-y, 50%); z-index: 28; width: 90px; height: 90px; display: grid; place-items: center; transform: translate(-50%, -50%); pointer-events: none; }
+.capture-impact i { position: absolute; inset: 0; border: 3px solid #f0c45a; border-radius: 50%; animation: impactRing .4s .46s ease-out both; }
+.capture-impact strong { color: #ffdc75; font: 800 14px 'Gowun Batang'; text-shadow: 0 2px 4px #000; animation: impactWord .44s .46s ease-out both; }
 @keyframes impactRing { 0% { opacity: 0; transform: scale(.2); } 8% { opacity: 1; } 100% { opacity: 0; transform: scale(1.8); } }
 @keyframes impactWord { 0% { opacity: 0; transform: scale(.4) rotate(-8deg); } 40% { opacity: 1; transform: scale(1.2) rotate(2deg); } 100% { opacity: 0; transform: scale(1) translateY(-18px); } }
 .how-to { margin: 18px 0; padding: 15px 15px 15px 36px; background: #09120e; border-radius: 8px; color: #adb3ad; font-size: 12px; line-height: 1.9; }
@@ -412,6 +398,53 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   transform-origin: center;
   transition: left .28s ease, top .28s ease, transform .2s ease, filter .2s ease;
 }
+.loose-card.dealt-from-deck {
+  z-index: 20;
+  animation: dealFromDeck .8s cubic-bezier(.2, .82, .28, 1.08) both;
+  animation-delay: var(--deal-delay);
+  will-change: left, top, transform, opacity;
+}
+.loose-card.dealt-from-deck > .hwatu-card {
+  transform-style: preserve-3d;
+  animation: flipDealtCard .32s ease-in-out both;
+  animation-delay: var(--deal-delay);
+  will-change: transform;
+}
+.capture-game .loose-card.dealt-from-deck > .hwatu-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: block;
+  background: repeating-linear-gradient(45deg, #812c25 0 4px, #b74232 4px 8px);
+  border: 3px double #e2cf9c;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  animation: hideCardBack .32s steps(1, end) both;
+  animation-delay: var(--deal-delay);
+}
+@keyframes flipDealtCard {
+  0% { transform: perspective(500px) rotateY(180deg); }
+  100% { transform: perspective(500px) rotateY(0deg); }
+}
+@keyframes hideCardBack {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.loose-card.submitted-floor-placeholder {
+  animation: showSubmittedOnFloor .01s .55s both;
+}
+@keyframes showSubmittedOnFloor {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dealFromDeck {
+  0% { left: 50%; top: 50%; opacity: 0; transform: translate(-50%, -50%) scale(1.18) rotate(0); }
+  5%, 40% { left: 50%; top: 50%; opacity: 1; transform: translate(-50%, -50%) scale(1.18) rotate(0); }
+  78% { transform: translate(-50%, -50%) translate(var(--stack-x, 0), var(--stack-y, 0)) scale(.96) rotate(-2deg); }
+  90% { transform: translate(-50%, -50%) translate(var(--stack-x, 0), var(--stack-y, 0)) scale(1.04) rotate(1deg); }
+  100% { left: var(--floor-x); top: var(--floor-y); opacity: 1; transform: translate(-50%, -50%) translate(var(--stack-x, 0), var(--stack-y, 0)) translateY(var(--scatter-shift)) rotate(var(--scatter-rotate)); }
+}
 .loose-card:hover { z-index: 12; transform: translate(-50%, -50%) translate(var(--stack-x, 0), calc(var(--stack-y, 0px) - 7px)) rotate(0); }
 .loose-card > .hwatu-card.compact { width: 100%; }
 .loose-card > span {
@@ -438,6 +471,40 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .loose-card.almost-set > span { color: #171109; background: #efc458; font-weight: 800; }
 .center-deck { position: absolute; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%); }
 .empty-floor { position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%); color: #3b4b41; font: 11px 'Gowun Batang'; white-space: nowrap; }
+.submitted-card-flight {
+  --floor-scale: .62;
+  --impact-scale: .55;
+  position: fixed;
+  left: var(--submit-x);
+  top: var(--submit-y);
+  z-index: 100;
+  width: 90px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: submitToMatchedCard .56s cubic-bezier(.2, .82, .28, 1.08) both;
+  will-change: left, top, transform, opacity;
+}
+.submitted-card-flight .hwatu-card { width: 100%; box-shadow: 0 18px 30px rgba(0, 0, 0, .62); }
+@keyframes submitToMatchedCard {
+  0%, 12% { left: var(--submit-x); top: var(--submit-y); opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-2deg); }
+  72% { left: var(--match-x); top: var(--match-y); transform: translate(-50%, -50%) scale(var(--floor-scale)) rotate(2deg); }
+  84% { left: var(--match-x); top: var(--match-y); transform: translate(-50%, -50%) scale(var(--impact-scale)) rotate(-1deg); }
+  94% { opacity: 1; }
+  100% { left: var(--match-x); top: var(--match-y); opacity: 0; transform: translate(-50%, -50%) scale(var(--floor-scale)) rotate(0); }
+}
+.match-target-ghost {
+  position: absolute;
+  left: var(--match-x);
+  top: var(--match-y);
+  z-index: 19;
+  width: 55px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: hideMatchTarget .58s linear both;
+}
+.match-target-ghost .hwatu-card { width: 100%; }
+.match-target-ghost .hwatu-card + .hwatu-card { position: absolute; left: 8px; top: 4px; }
+@keyframes hideMatchTarget { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
 .rotate-device { display: none; }
 
 .blind-select-screen {
@@ -559,7 +626,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 /* 모바일 가로: 상태·바닥·손패·획득패를 한 화면에 고정 */
 @media (max-width: 950px) and (orientation: landscape) {
   html, body, #root { width: 100%; height: 100%; overflow: hidden; }
-  .capture-game { width: 100%; height: 100dvh; min-height: 0; overflow: hidden; }
+  .capture-game { width: 100%; height: var(--visual-viewport-height, 100dvh); min-height: 0; overflow: hidden; }
   .capture-game .topbar { height: 40px; padding: 0 10px; }
   .capture-game .brand { gap: 7px; }
   .capture-game .brand-mark { width: 27px; height: 31px; border-width: 2px; box-shadow: 2px 2px 0 #000; font-size: 15px; }
@@ -567,7 +634,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .capture-game .brand p { display: none; }
   .capture-game .text-button { padding: 5px 10px; font-size: 9px; }
 
-  .blind-select-screen { min-height: 0; height: calc(100dvh - 40px); padding: 7px 18px 9px; overflow: hidden; }
+  .blind-select-screen { min-height: 0; height: calc(var(--visual-viewport-height, 100dvh) - 40px); padding: 7px 18px max(9px, env(safe-area-inset-bottom)); overflow: hidden; }
   .blind-heading { margin-bottom: 7px; }
   .blind-heading > span { font-size: 6px; }
   .blind-heading h2 { margin: 1px 0; font-size: 17px; }
@@ -591,12 +658,12 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .blind-result { margin-top: 7px; padding: 4px; font-size: 6px; }
 
   .capture-layout {
-    height: 100dvh;
+    height: var(--visual-viewport-height, 100dvh);
     display: grid;
     grid-template-columns: clamp(158px, 20vw, 184px) minmax(0, 1fr);
     gap: 5px;
     margin: 0;
-    padding: 5px;
+    padding: 5px 5px max(5px, env(safe-area-inset-bottom));
     overflow: hidden;
   }
   .status-rail {
@@ -730,6 +797,8 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .status-charms .mini-charm b { font-size: 10px; }
   .capture-impact { width: 55px; height: 55px; }
   .capture-impact strong { font-size: 9px; }
+  .submitted-card-flight { --floor-scale: .72; --impact-scale: .63; width: 52px; }
+  .match-target-ghost { width: clamp(29px, 4.3vw, 38px); }
 
   .match-choice-backdrop { padding: 5px; }
   .match-choice-panel { width: 390px; padding: 10px 16px; border-radius: 9px; }
@@ -747,6 +816,8 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .hwatu-card.slapped,
   .won-group.just-scored,
   .won-group .hwatu-card.fly-to-score,
+  .submitted-card-flight,
+  .match-target-ghost,
   .score-pop,
   .capture-impact i,
   .capture-impact strong { animation-duration: .01ms !important; animation-delay: 0ms !important; }
