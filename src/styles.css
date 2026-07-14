@@ -732,12 +732,17 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .capture-game .floor-spread .hwatu-card.compact { width: 100%; height: auto; }
 
   .hand-zone {
-    grid-column: 1;
-    grid-row: 2;
+    position: fixed;
+    left: calc(clamp(158px, 20vw, 184px) + 10px + env(safe-area-inset-left));
+    right: max(5px, env(safe-area-inset-right));
+    bottom: max(5px, env(safe-area-inset-bottom));
+    z-index: 60;
+    height: 86px;
     min-height: 0;
     padding: 0 6px;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 -5px 18px rgba(0, 0, 0, .48);
   }
   .hand-zone .zone-heading p { display: none; }
   .player-hand {
@@ -814,6 +819,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 /* 주소창이 펼쳐진 낮은 모바일 가로 화면 */
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 430px) {
   .capture-board { grid-template-rows: minmax(0, 1fr) 72px; }
+  .hand-zone { height: 68px; }
   .capture-game .player-hand .hwatu-card { width: clamp(34px, 5vw, 43px); }
   .capture-game .player-hand .hwatu-card.selected,
   .capture-game .player-hand .hwatu-card.selected:hover { transform: translateY(-6px); }
@@ -827,6 +833,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 350px) {
   .capture-layout { gap: 3px; padding-top: 3px; padding-bottom: max(3px, env(safe-area-inset-bottom)); }
   .capture-board { grid-template-rows: minmax(0, 1fr) 60px; gap: 3px; }
+  .hand-zone { height: 56px; }
   .capture-game .player-hand .hwatu-card { width: clamp(29px, 4.4vw, 36px); }
   .play-turn { width: 66px; min-height: 25px; font-size: 6px; }
   .hand-sort { width: 66px; bottom: 29px; }
