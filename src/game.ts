@@ -2,6 +2,7 @@ export type CardKind = 'gwang' | 'animal' | 'ribbon-red' | 'ribbon-blue' | 'ribb
 
 export interface HwatuCard {
   id: string
+  definitionId: string
   month: number
   spriteRow: number
   spriteColumn: number
@@ -11,6 +12,7 @@ export interface HwatuCard {
   title: string
   chips: number
   bird?: boolean
+  piValue?: number
 }
 
 export interface ScoreResult {
@@ -54,6 +56,21 @@ const recipes: Array<Array<{ kind: CardKind; title: string; bird?: boolean }>> =
   [{ kind: 'gwang', title: '비 광' }, { kind: 'animal', title: '제비', bird: true }, { kind: 'ribbon-plain', title: '비 띠' }, { kind: 'pi', title: '피' }],
 ]
 
+const cardDefinitionIds = [
+  ['jan-gwang', 'jan-red-ribbon', 'jan-pi-1', 'jan-pi-2'],
+  ['feb-bird', 'feb-red-ribbon', 'feb-pi-1', 'feb-pi-2'],
+  ['mar-gwang', 'mar-red-ribbon', 'mar-pi-1', 'mar-pi-2'],
+  ['apr-bird', 'apr-plain-ribbon', 'apr-pi-1', 'apr-pi-2'],
+  ['may-animal', 'may-plain-ribbon', 'may-pi-1', 'may-pi-2'],
+  ['jun-animal', 'jun-blue-ribbon', 'jun-pi-1', 'jun-pi-2'],
+  ['jul-animal', 'jul-plain-ribbon', 'jul-pi-1', 'jul-pi-2'],
+  ['aug-gwang', 'aug-bird', 'aug-pi-1', 'aug-pi-2'],
+  ['sep-animal', 'sep-blue-ribbon', 'sep-pi-1', 'sep-pi-2'],
+  ['oct-animal', 'oct-blue-ribbon', 'oct-pi-1', 'oct-pi-2'],
+  ['nov-gwang', 'nov-double-pi', 'nov-pi-1', 'nov-pi-2'],
+  ['dec-rain-gwang', 'dec-animal', 'dec-rain-ribbon', 'dec-double-pi'],
+] as const
+
 const chipByKind: Record<CardKind, number> = {
   gwang: 11,
   animal: 7,
@@ -66,6 +83,7 @@ const chipByKind: Record<CardKind, number> = {
 export const createDeck = (): HwatuCard[] => months.flatMap(([symbolName, flower, symbol], index) =>
   recipes[index].map((recipe, cardIndex) => ({
     id: `${index + 1}-${cardIndex}-${Math.random().toString(36).slice(2, 7)}`,
+    definitionId: cardDefinitionIds[index][cardIndex],
     month: index + 1,
     spriteRow: Math.floor(index / 2),
     spriteColumn: (index % 2) * 4 + cardIndex,
@@ -75,6 +93,7 @@ export const createDeck = (): HwatuCard[] => months.flatMap(([symbolName, flower
     title: `${symbolName} · ${recipe.title}`,
     chips: chipByKind[recipe.kind],
     bird: recipe.bird,
+    piValue: recipe.kind === 'pi' && (cardDefinitionIds[index][cardIndex] === 'nov-double-pi' || cardDefinitionIds[index][cardIndex] === 'dec-double-pi') ? 2 : 1,
   })),
 )
 
@@ -95,45 +114,25 @@ export const charms: Charm[] = [
   { id: 'bird', name: '새벽의 새장', icon: '鳥', description: '획득한 새 두 마리마다 보너스 1점', price: 6, accent: '#b9f06a' },
 ]
 
-export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[]): ScoreResult {
-  const hasAll = (months: number[], predicate: (card: HwatuCard) => boolean) =>
-    months.every((month) => cards.some((card) => card.month === month && predicate(card)))
+export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[], ruleBonus = 0, ruleDetails: string[] = []): ScoreResult {
   const count = (predicate: (card: HwatuCard) => boolean) => cards.filter(predicate).length
-  const gwangCount = count((card) => card.kind === 'gwang')
-  const animalCount = count((card) => card.kind === 'animal')
-  const ribbonCount = count((card) => card.kind.startsWith('ribbon'))
-  const piCount = cards.reduce((sum, card) => sum + (card.kind === 'pi' ? (card.title.includes('쌍피') ? 2 : 1) : 0), 0)
+  const evaluation = evaluatePatterns(cards)
+  const gwangCount = evaluation.counts.gwang
+  const ribbonCount = evaluation.counts.ribbon
+  const piCount = evaluation.counts.junk
   const birdCount = count((card) => Boolean(card.bird))
-  const completedMonths = new Set(cards.map((card) => card.month)).size
-  const details: string[] = []
-
-  let gwang = gwangCount === 5 ? 15 : gwangCount === 4 ? 4 : gwangCount === 3 ? 3 : 0
-  if (gwangCount === 3 && cards.some((card) => card.month === 12 && card.kind === 'gwang')) gwang = 2
-  if (gwang) details.push(`${gwangCount === 5 ? '오광' : gwangCount === 4 ? '사광' : gwang === 2 ? '비삼광' : '삼광'} ${gwang}점`)
-
-  let animal = animalCount >= 5 ? animalCount - 4 : 0
-  if (hasAll([2, 4, 8], (card) => card.kind === 'animal')) {
-    animal += 5
-    details.push('고도리 5점')
-  }
-  if (animalCount >= 5) details.push(`열끗 ${animalCount - 4}점`)
-
-  let ribbon = ribbonCount >= 5 ? ribbonCount - 4 : 0
-  const ribbonSets = [
-    { months: [1, 2, 3], kind: 'ribbon-red' as CardKind, name: '홍단' },
-    { months: [6, 9, 10], kind: 'ribbon-blue' as CardKind, name: '청단' },
-    { months: [4, 5, 7], kind: 'ribbon-plain' as CardKind, name: '초단' },
+  const completedMonths = new Set(cards.filter((card) => card.month >= 1).map((card) => card.month)).size
+  const patternScore = (ids: string[]) => evaluation.completedPatterns.filter((pattern) => ids.includes(pattern.id)).reduce((sum, pattern) => sum + pattern.score, 0)
+  const gwang = patternScore(['three-brights', 'rain-three-brights', 'four-brights', 'five-brights'])
+  const animal = patternScore(['godori']) + evaluation.countScores.animal
+  const ribbon = patternScore(['hongdan', 'cheongdan', 'chodan']) + evaluation.countScores.ribbon
+  const pi = evaluation.countScores.junk
+  const details = [
+    ...evaluation.completedPatterns.map((pattern) => `${pattern.name} ${pattern.score}점`),
+    ...(evaluation.countScores.animal ? [`열끗 ${evaluation.countScores.animal}점`] : []),
+    ...(evaluation.countScores.ribbon ? [`띠 ${evaluation.countScores.ribbon}점`] : []),
+    ...(evaluation.countScores.junk ? [`피 ${evaluation.countScores.junk}점`] : []),
   ]
-  ribbonSets.forEach((set) => {
-    if (hasAll(set.months, (card) => card.kind === set.kind)) {
-      ribbon += 3
-      details.push(`${set.name} 3점`)
-    }
-  })
-  if (ribbonCount >= 5) details.push(`띠 ${ribbonCount - 4}점`)
-
-  const pi = piCount >= 10 ? piCount - 9 : 0
-  if (pi) details.push(`피 ${pi}점`)
 
   let bonus = 0
   if (ownedCharmIds.includes('moon') && completedMonths) {
@@ -153,6 +152,11 @@ export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[]): Scor
     details.push(`새벽의 새장 ${value}점`)
   }
 
+  if (ruleBonus > 0) {
+    bonus += ruleBonus
+    details.push(...ruleDetails)
+  }
+
   return { gwang, animal, ribbon, pi, bonus, total: gwang + animal + ribbon + pi + bonus, details }
 }
 
@@ -164,3 +168,4 @@ export const kindLabel: Record<CardKind, string> = {
   'ribbon-plain': '초단',
   pi: '피',
 }
+import { evaluatePatterns } from './scoring'

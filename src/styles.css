@@ -98,6 +98,14 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .shop-charm b { color: #f0c85e; font-size: 13px; }
 .next-round { float: right; }
 .result-modal { width: min(480px, 100%); text-align: center; }
+.go-stop-modal { width: min(460px, 100%); padding: 30px; text-align: center; background: #101d17; border: 1px solid #6f684e; border-radius: 16px; box-shadow: 0 28px 80px #000; }
+.go-stop-modal h2 { margin: 5px 0; font: 700 29px 'Gowun Batang'; color: #f0c760; }
+.go-stop-modal p { margin: 0 0 20px; color: #929c94; font-size: 12px; }
+.go-stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.go-stop-actions button { min-height: 72px; border-radius: 9px; cursor: pointer; font-weight: 800; }
+.go-stop-actions button span { display: block; margin-top: 5px; font-size: 9px; font-weight: 500; }
+.go-button { color: #171108; background: #e9bd59; border: 0; }
+.stop-button { color: #e8e3d6; background: #17241d; border: 1px solid #526257; }
 .stamp { display: inline-grid; place-items: center; width: 72px; height: 72px; border: 4px double #d84d3b; color: #d84d3b; border-radius: 50%; font: 42px serif; transform: rotate(-10deg); }
 .result-modal h2 { font-family: 'Gowun Batang'; font-size: 28px; }
 .result-modal p { color: #929b94; }
@@ -505,9 +513,9 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   top: var(--match-y);
   z-index: 19;
   width: 55px;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) translateX(var(--ghost-x, 0px));
   pointer-events: none;
-  animation: hideMatchTarget .58s linear both;
+  animation: hideMatchTarget var(--ghost-duration, .58s) linear both;
 }
 .match-target-ghost .hwatu-card { width: 100%; }
 .match-target-ghost .hwatu-card + .hwatu-card { position: absolute; left: 8px; top: 4px; }
