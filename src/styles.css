@@ -107,6 +107,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .go-stop-modal h2 { margin: 5px 0; font: 700 29px 'Gowun Batang'; color: #f0c760; }
 .go-stop-modal p { margin: 0 0 20px; color: #929c94; font-size: 12px; }
 .go-stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.go-stop-actions.stop-only { grid-template-columns: 1fr; }
 .go-stop-actions button { min-height: 72px; border-radius: 9px; cursor: pointer; font-weight: 800; }
 .go-stop-actions button span { display: block; margin-top: 5px; font-size: 9px; font-weight: 500; }
 .go-button { color: #171108; background: #e9bd59; border: 0; }
@@ -114,6 +115,9 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .stamp { display: inline-grid; place-items: center; width: 72px; height: 72px; border: 4px double #d84d3b; color: #d84d3b; border-radius: 50%; font: 42px serif; transform: rotate(-10deg); }
 .result-modal h2 { font-family: 'Gowun Batang'; font-size: 28px; }
 .result-modal p { color: #929b94; }
+.game-over-reason { margin: 15px 0 10px; padding: 12px 14px; color: #ddd5c3; background: rgba(170,55,43,.12); border: 1px solid rgba(216,77,59,.42); border-radius: 8px; }
+.game-over-reason strong { display: block; margin-bottom: 5px; color: #e96b59; font-size: 10px; letter-spacing: .08em; }
+.game-over-reason span { font-size: 12px; line-height: 1.55; }
 .result-modal button { margin-top: 14px; }
 .rules-modal { width: min(650px, 100%); position: relative; }
 .close { position: absolute; right: 22px; top: 18px; border: 0; background: none; color: #9ca49e; font-size: 28px; cursor: pointer; }
@@ -264,12 +268,14 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .won-group { min-width: 0; min-height: 114px; position: relative; padding: 8px; background: #09120e; border: 1px solid #26342c; border-radius: 8px; }
 .won-group > span { position: absolute; left: 7px; top: 7px; color: #8e968f; font-size: 8px; font-weight: 800; }
 .won-group > b { position: absolute; right: 7px; top: 6px; color: #e9c15e; font-size: 10px; }
+.won-group.has-pattern > b { top: 18px; }
+.won-pattern { position: absolute; right: 6px; top: 4px; z-index: 11; max-width: 64%; overflow: hidden; color: #fff0a5; font-size: 7px; font-weight: 900; line-height: 1; text-align: right; text-overflow: ellipsis; text-shadow: 0 1px 5px rgba(232,185,69,.6); white-space: nowrap; }
 .won-group > div { height: 94px; display: flex; align-items: flex-end; justify-content: center; padding-top: 13px; overflow: hidden; }
 .won-group .compact { width: 35px; height: auto; margin-left: -18px; }
 .won-group .compact:first-child { margin-left: 0; }
 .won-group .compact .plant { font-size: 23px; }
 .won-group > div > i { color: #354039; font-size: 9px; font-style: normal; }
-.won-more { z-index: 4; min-width: 23px; height: 23px; display: grid; place-items: center; margin-left: -6px; color: #17130a; background: #e9bd59; border: 2px solid #0c140f; border-radius: 50%; font-size: 7px; font-style: normal; font-weight: 900; box-shadow: 0 3px 8px rgba(0,0,0,.45); }
+.won-more { position: absolute; right: 3px; bottom: 3px; z-index: 10; min-width: 23px; height: 23px; display: grid; place-items: center; margin: 0; color: #17130a; background: #e9bd59; border: 2px solid #0c140f; border-radius: 50%; font-size: 7px; font-style: normal; font-weight: 900; box-shadow: 0 3px 8px rgba(0,0,0,.45); }
 .rail-won-pile { margin: 16px 0; }
 .rail-won-pile > .eyebrow { display: block; margin-bottom: 6px; }
 .rail-won-pile .won-groups { height: auto; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -328,6 +334,16 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .capture-game .hwatu-card::after { display: none; }
 .capture-game .hwatu-card .plant,
 .capture-game .hwatu-card .flower { display: none; }
+.capture-game .hwatu-card.bonus-pi { --bonus-color: #b9e96b; background: linear-gradient(145deg, #f5ffe5 0%, var(--bonus-color) 100%); border-color: color-mix(in srgb, var(--bonus-color) 65%, #101713); box-shadow: 0 5px 12px rgba(0,0,0,.4), inset 0 0 0 2px rgba(255,255,255,.42); }
+.capture-game .hwatu-card.bonus-ttadak { --bonus-color: #73d9f4; }
+.capture-game .hwatu-card.bonus-sweep { --bonus-color: #f08a55; }
+.capture-game .hwatu-card.bonus-peok { --bonus-color: #b997ed; }
+.capture-game .hwatu-card.bonus-pi .month { display: none; }
+.bonus-pi-mark { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; gap: 2px; color: #132018; text-align: center; text-shadow: 0 1px rgba(255,255,255,.55); }
+.bonus-pi-mark b { font-size: clamp(8px, 1vw, 13px); line-height: 1; white-space: nowrap; }
+.bonus-pi-mark small { font-size: clamp(5px, .65vw, 8px); font-weight: 900; white-space: nowrap; }
+.won-group .bonus-pi-mark b { font-size: 7px; }
+.won-group .bonus-pi-mark small { font-size: 5px; }
 .capture-game .hwatu-card .month {
   left: 4px;
   top: 4px;
@@ -840,11 +856,13 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .won-group { min-height: 0; padding: 2px; border-radius: 4px; }
   .won-group > span { left: 3px; top: 2px; font-size: 5px; }
   .won-group > b { right: 3px; top: 2px; font-size: 6px; }
+  .won-group.has-pattern > b { top: 10px; }
+  .won-pattern { right: 2px; top: 2px; max-width: 62%; font-size: 4px; }
   .won-group > div { height: 100%; padding: 14px 2px 2px; overflow: hidden; }
   .won-group .compact { width: 16px; height: auto; margin-left: -8px; border-radius: 2px; }
   .won-group .compact:first-child { margin-left: 0; }
   .won-group > div > i { font-size: 5px; }
-  .won-more { min-width: 15px; width: 15px; height: 15px; margin-left: -4px; border-width: 1px; font-size: 5px; }
+  .won-more { right: 1px; bottom: 1px; min-width: 15px; width: 15px; height: 15px; border-width: 1px; font-size: 5px; }
   .status-charms { height: 27px; margin-top: 4px; gap: 2px; }
   .status-charms .empty-slot,
   .status-charms .mini-charm { height: 23px; }

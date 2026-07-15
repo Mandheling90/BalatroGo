@@ -3,8 +3,11 @@ import { getBlind } from '../data/blinds'
 import type { GameState } from './types'
 import { createShopOffers, INITIAL_REROLL_COST } from './shop'
 
+export const canChooseGo = (state: Pick<GameState, 'awaitingGoStop' | 'hand'>) =>
+  state.awaitingGoStop && state.hand.length > 0
+
 export function chooseGo(state: GameState): GameState {
-  if (!state.awaitingGoStop) return state
+  if (!canChooseGo(state)) return state
 
   const currentScore = scoreCaptured(
     state.captured,
@@ -13,18 +16,14 @@ export function chooseGo(state: GameState): GameState {
     state.ruleDetails,
   ).total
   const reward = 2 + state.goCount
-  const noTurnsLeft = state.hand.length === 0
-
   return {
     ...state,
     awaitingGoStop: false,
     goCount: state.goCount + 1,
     goRequiredScore: currentScore + 1,
     coins: state.coins + reward,
-    phase: noTurnsLeft ? 'gameover' : 'playing',
-    message: noTurnsLeft
-      ? `고 보상 ${reward}냥을 받았지만 낼 패가 없어 게임오버입니다.`
-      : `${state.goCount + 1}고! ${reward}냥을 받고 다음 필요 점수는 ${currentScore + 1}점입니다.`,
+    phase: 'playing',
+    message: `${state.goCount + 1}고! ${reward}냥을 받고 다음 필요 점수는 ${currentScore + 1}점입니다.`,
   }
 }
 

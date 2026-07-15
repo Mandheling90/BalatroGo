@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CardKind, charms, HwatuCard, scoreCaptured } from './game'
+import { evaluatePatterns } from './scoring'
 import { Card } from './components/game/HwatuCard'
 import { GoStopModal, MatchChoiceModal, RulesModal } from './components/game/GameModals'
 import { blindDefinitions, getBlind } from './game/data/blinds'
@@ -35,6 +36,10 @@ function App() {
     () => scoreCaptured(game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails),
     [game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails],
   )
+  const completedPatterns = useMemo(() => evaluatePatterns(game.captured).completedPatterns, [game.captured])
+  const patternLabels = (ids: string[]) => completedPatterns
+    .filter((pattern) => ids.includes(pattern.id))
+    .map((pattern) => `${pattern.name} +${pattern.score}`)
   const currentBlind = getBlind(game.round, game.blindIndex)
   const selectedMonth = game.hand.find((card) => card.id === game.selected)?.month
   const turn = 11 - game.hand.length
@@ -134,6 +139,7 @@ function App() {
         selected: null,
         phase: 'playing',
         pendingPhase: null,
+        gameOverReason: null,
         message: `${blind.name} 시작. 손패 한 장을 골라 바닥에 놓으세요.`,
         lastRevealed: [],
         lastPlayedId: null,
@@ -180,10 +186,10 @@ function App() {
   const exitShop = () => setGame(leaveShop)
 
   const capturedGroups = [
-    { key: 'gwang' as const, label: '광', score: score.gwang },
-    { key: 'animal' as const, label: '열끗', score: score.animal },
-    { key: 'ribbon' as const, label: '띠', score: score.ribbon },
-    { key: 'pi' as const, label: '피', score: score.pi },
+    { key: 'gwang' as const, label: '광', score: score.gwang, patterns: patternLabels(['three-brights', 'rain-three-brights', 'four-brights', 'five-brights']) },
+    { key: 'animal' as const, label: '열끗', score: score.animal, patterns: patternLabels(['godori']) },
+    { key: 'ribbon' as const, label: '띠', score: score.ribbon, patterns: patternLabels(['hongdan', 'cheongdan', 'chodan']) },
+    { key: 'pi' as const, label: '피', score: score.pi, patterns: [] },
   ]
 
   return (
@@ -261,7 +267,7 @@ function App() {
                 const cards = categoryCards(game.captured, group.key)
                 const visibleCards = cards.slice(-4)
                 const hiddenCount = cards.length - visibleCards.length
-                return <div className={`won-group ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span><div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={getCaptureEffectDelay(card)} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
+                return <div className={`won-group ${group.patterns.length ? 'has-pattern' : ''} ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span>{group.patterns.length > 0 && <small className="won-pattern">{group.patterns.join(' · ')}</small>}<div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={getCaptureEffectDelay(card)} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
               })}
             </div>
           </section>
@@ -403,7 +409,7 @@ function App() {
       </div>
       )}
 
-      {game.awaitingGoStop && <GoStopModal score={score.total} goCount={game.goCount} onGo={handleGo} onStop={handleStop} />}
+      {game.awaitingGoStop && !isResolving && <GoStopModal score={score.total} goCount={game.goCount} canGo={game.hand.length > 0} onGo={handleGo} onStop={handleStop} />}
 
       {game.phase === 'shop' && (
         <div className="overlay"><section className="shop-modal">
@@ -427,7 +433,8 @@ function App() {
       {game.phase === 'gameover' && (
         <div className="overlay"><section className="result-modal">
           <span className="stamp">敗</span><p>{currentBlind.name} 실패</p><h2>앤티 {game.round} · {score.total}점</h2>
-          <p>목표 {game.target}점까지 {game.target - score.total}점이 모자랐습니다.</p>
+          {game.gameOverReason && <div className="game-over-reason"><strong>게임오버 사유</strong><span>{game.gameOverReason}</span></div>}
+          <p>필요 점수 {game.goRequiredScore}점까지 {Math.max(0, game.goRequiredScore - score.total)}점이 모자랐습니다.</p>
           <button className="primary-action" onClick={() => setGame(createNewGame())}>새 판 시작</button>
         </section></div>
       )}

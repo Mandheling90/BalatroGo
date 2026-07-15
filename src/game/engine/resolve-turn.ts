@@ -7,6 +7,9 @@ import { GameState } from './types'
 
 const emptyMatch = (table: HwatuCard[]) => ({ table, captured: [] as HwatuCard[], matched: false, swept: false })
 
+export const shouldGameOverAfterTurn = (goCount: number, reachedTarget: boolean, remainingHandCount: number) =>
+  !reachedTarget && (goCount > 0 || remainingHandCount === 0)
+
 export function resolveGameTurn(current: GameState, pickedMatchId?: string): GameState {
   const played = current.hand.find((card) => card.id === current.selected)
   if (!played) return current
@@ -47,7 +50,8 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string): Gam
   const nextRuleDetails = isShake ? [...current.ruleDetails, '흔들기 +1점'] : current.ruleDetails
   const nextScore = scoreCaptured(captured, current.ownedCharms, nextRuleBonus, nextRuleDetails)
   const reachedGoTarget = nextScore.total >= current.goRequiredScore
-  const failed = !reachedGoTarget && remainingHand.length === 0
+  const failed = shouldGameOverAfterTurn(current.goCount, reachedGoTarget, remainingHand.length)
+  const failedAfterGo = failed && current.goCount > 0
   const resultMessages: string[] = []
   if (isPeok) resultMessages.push(`${played.month}월 뻑! 세 장이 바닥에 묶였습니다.`)
   else if (isBomb) resultMessages.push(`${played.month}월 폭탄! 손패 세 장과 바닥패를 한꺼번에 가져왔습니다.`)
@@ -73,8 +77,13 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string): Gam
     selected: null,
     phase: 'playing',
     pendingPhase: failed ? 'gameover' : null,
+    gameOverReason: failedAfterGo
+      ? `고 이후 다음 턴에 필요 점수 ${current.goRequiredScore}점을 달성하지 못했습니다.`
+      : failed
+        ? `진행 턴을 모두 사용했지만 목표 점수 ${current.goRequiredScore}점을 달성하지 못했습니다.`
+        : null,
     awaitingGoStop: reachedGoTarget,
-    message: reachedGoTarget ? `${capturedCopy} 필요 점수 ${current.goRequiredScore}점을 달성했습니다. 고 또는 스톱을 선택하세요.` : failed ? `마지막 턴이 끝났습니다. ${capturedCopy}` : capturedCopy,
+    message: reachedGoTarget ? `${capturedCopy} 필요 점수 ${current.goRequiredScore}점을 달성했습니다. 고 또는 스톱을 선택하세요.` : failedAfterGo ? `${capturedCopy} 이번 턴에 추가 점수를 내지 못해 게임오버입니다.` : failed ? `마지막 턴이 끝났습니다. ${capturedCopy}` : capturedCopy,
     lastRevealed: revealed.map((card) => card.id),
     lastCapturedMonths: Array.from(new Set([...(playerMatch.matched ? [played.month] : []), ...(deckMatch.matched && firstRevealed ? [firstRevealed.month] : []), ...(secondExceptionCapture.length && secondRevealed ? [secondRevealed.month] : [])])),
     lastPlayedId: playerMatch.matched ? null : played.id,

@@ -27,10 +27,15 @@ export function Card({
   onClick,
 }: HwatuCardViewProps) {
   const Tag = onClick ? 'button' : 'div'
+  const isBonusPi = card.definitionId === 'bonus-pi'
+  const bonusTone = card.bonusEvent === '폭탄' ? 'bomb'
+    : card.bonusEvent === '따닥' ? 'ttadak'
+      : card.bonusEvent === '쓸' ? 'sweep'
+        : 'peok'
 
   return (
     <Tag
-      className={`hwatu-card kind-${card.kind} ${selected ? 'selected' : ''} ${compact ? 'compact' : ''} ${revealed ? 'revealed' : ''} ${slapped ? 'slapped' : ''} ${flyToScore ? 'fly-to-score' : ''} ${submittedCapture ? 'submitted-capture' : ''}`}
+      className={`hwatu-card kind-${card.kind} ${isBonusPi ? `bonus-pi bonus-${bonusTone}` : ''} ${selected ? 'selected' : ''} ${compact ? 'compact' : ''} ${revealed ? 'revealed' : ''} ${slapped ? 'slapped' : ''} ${flyToScore ? 'fly-to-score' : ''} ${submittedCapture ? 'submitted-capture' : ''}`}
       onClick={onClick}
       aria-pressed={onClick ? selected : undefined}
       style={{
@@ -43,6 +48,7 @@ export function Card({
       <span className="month">{card.month}월</span>
       <span className="plant">{card.symbol}</span>
       <span className="flower">{card.flower}</span>
+      {isBonusPi && <span className="bonus-pi-mark"><b>+1 피</b><small>{card.bonusEvent ?? '보너스'}</small></span>}
     </Tag>
   )
 }

@@ -20,6 +20,7 @@ export interface GameState {
   shopRerollCost: number
   phase: Phase
   pendingPhase: 'shop' | 'gameover' | null
+  gameOverReason: string | null
   message: string
   lastRevealed: string[]
   lastCapturedMonths: number[]
