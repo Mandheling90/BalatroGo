@@ -108,6 +108,8 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .go-stop-modal { width: min(460px, 100%); padding: 30px; text-align: center; background: #101d17; border: 1px solid #6f684e; border-radius: 16px; box-shadow: 0 28px 80px #000; }
 .go-stop-modal h2 { margin: 5px 0; font: 700 29px 'Gowun Batang'; color: #f0c760; }
 .go-stop-modal p { margin: 0 0 20px; color: #929c94; font-size: 12px; }
+.go-risk-warning { margin: -7px 0 14px; padding: 9px 11px; color: #d7cfc0; background: rgba(211,70,48,.1); border: 1px solid rgba(231,94,69,.42); border-radius: 7px; font-size: 10px; line-height: 1.5; }
+.go-risk-warning strong { margin-right: 5px; color: #f07862; }
 .go-stop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .go-stop-actions.stop-only { grid-template-columns: 1fr; }
 .go-stop-actions button { min-height: 72px; border-radius: 9px; cursor: pointer; font-weight: 800; }
@@ -588,6 +590,8 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   --blind-color: #d3b15a;
   min-height: 365px;
   position: relative;
+  display: flex;
+  flex-direction: column;
   z-index: 1;
   padding: 82px 22px 20px;
   color: #ece9de;
@@ -608,9 +612,9 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .blind-stakes div { padding: 10px 5px; background: rgba(3, 9, 6, .6); border: 1px solid #29362f; border-radius: 7px; }
 .blind-stakes span { display: block; color: #78827b; font-size: 8px; }
 .blind-stakes strong { display: block; margin-top: 3px; color: #e8d5a1; font-size: 11px; }
-.blind-actions { margin-top: 18px; }
-.blind-actions button { width: 100%; min-height: 39px; border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 800; }
-.challenge-blind { color: white; background: var(--blind-color); border: 0; box-shadow: 0 4px 0 color-mix(in srgb, var(--blind-color) 55%, #000); }
+.blind-actions { margin-top: auto; padding-top: 18px; }
+.blind-actions button { width: 100%; min-height: 39px; display: grid; place-items: center; padding: 7px 10px; border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 800; line-height: 1.2; }
+.challenge-blind { color: white; background: var(--blind-color); border: 0; box-shadow: 0 5px 14px color-mix(in srgb, var(--blind-color) 22%, transparent); }
 .skip-blind { margin-top: 9px; color: #929b94; background: transparent; border: 1px solid #3b4941; }
 .blind-actions > span { display: block; padding: 9px; color: #db8a7b; border: 1px solid #683b34; border-radius: 7px; font-size: 9px; }
 .blind-result { margin-top: 22px; padding: 8px; color: var(--blind-color); border: 1px solid currentColor; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: .15em; }
@@ -714,17 +718,17 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .blind-heading h2 { margin: 1px 0; font-size: 17px; }
   .blind-heading p { font-size: 6px; }
   .blind-path { width: min(700px, 100%); flex: 1; min-height: 0; gap: 9px; }
-  .blind-card { min-height: 0; height: 100%; padding: 44px 10px 8px; border-radius: 9px; }
+  .blind-card { min-height: 0; height: 100%; padding: 36px 10px 8px; border-radius: 9px; }
   .blind-card.current { transform: translateY(-3px); }
-  .blind-token { width: 50px; height: 50px; top: 7px; border-width: 2px; border-radius: 14px; }
-  .blind-token span { font-size: 21px; }
+  .blind-token { width: 42px; height: 42px; top: 5px; border-width: 2px; border-radius: 12px; }
+  .blind-token span { font-size: 17px; }
   .blind-order { margin-top: 10px; font-size: 5px; }
-  .blind-card h3 { margin: 35px 0 6px; font-size: 13px; }
+  .blind-card h3 { margin: 25px 0 5px; font-size: 12px; }
   .blind-stakes { gap: 3px; }
   .blind-stakes div { padding: 4px 2px; border-radius: 4px; }
   .blind-stakes span { font-size: 5px; }
   .blind-stakes strong { margin-top: 1px; font-size: 7px; }
-  .blind-actions { margin-top: 6px; }
+  .blind-actions { margin-top: auto; padding-top: 6px; }
   .blind-actions button { min-height: 24px; border-radius: 4px; font-size: 7px; }
   .skip-blind { margin-top: 4px; }
   .blind-actions > span { padding: 4px; font-size: 6px; }
