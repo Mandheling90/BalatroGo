@@ -28,6 +28,7 @@ const categoryCards = (cards: HwatuCard[], category: 'gwang' | 'animal' | 'ribbo
 function App() {
   const [game, setGame] = useState<GameState>(createNewGame)
   const [showRules, setShowRules] = useState(false)
+  const [selectedCharmId, setSelectedCharmId] = useState<string | null>(null)
   const [matchChoice, setMatchChoice] = useState<{ playedId: string; matchIds: string[] } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
   const [isResolving, setIsResolving] = useState(false)
@@ -41,6 +42,7 @@ function App() {
     .filter((pattern) => ids.includes(pattern.id))
     .map((pattern) => `${pattern.name} +${pattern.score}`)
   const currentBlind = getBlind(game.round, game.blindIndex)
+  const selectedCharm = charms.find((charm) => charm.id === selectedCharmId)
   const selectedMonth = game.hand.find((card) => card.id === game.selected)?.month
   const turn = 11 - game.hand.length
   const sortedHand = useMemo(() => [...game.hand].sort((a, b) => {
@@ -277,7 +279,7 @@ function App() {
             <span className="slot-title">부적</span>
             {game.ownedCharms.map((id) => {
               const charm = charms.find((item) => item.id === id)!
-              return <div className="mini-charm" key={id} title={`${charm.name} · ${charm.description}`} style={{ '--accent': charm.accent } as React.CSSProperties}><b>{charm.icon}</b><span>{charm.name}</span></div>
+              return <button className="mini-charm" key={id} type="button" aria-label={`${charm.name} 설명 보기`} title={`${charm.name} · ${charm.description}`} onClick={() => setSelectedCharmId(id)} style={{ '--accent': charm.accent } as React.CSSProperties}><b>{charm.icon}</b><span>{charm.name}</span></button>
             })}
             {Array.from({ length: Math.max(0, 5 - game.ownedCharms.length) }).map((_, index) => <div className="empty-slot" key={index}>+</div>)}
           </div>
@@ -440,6 +442,14 @@ function App() {
       )}
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+
+      {selectedCharm && <div className="overlay charm-detail-overlay" onClick={() => setSelectedCharmId(null)}><section className="charm-detail-modal" onClick={(event) => event.stopPropagation()} style={{ '--accent': selectedCharm.accent } as React.CSSProperties}>
+        <button className="close" type="button" aria-label="부적 설명 닫기" onClick={() => setSelectedCharmId(null)}>×</button>
+        <span className="eyebrow">보유 부적</span>
+        <i>{selectedCharm.icon}</i>
+        <h2>{selectedCharm.name}</h2>
+        <p>{selectedCharm.description}</p>
+      </section></div>}
 
       {matchChoice && (() => {
         const played = game.hand.find((card) => card.id === matchChoice.playedId)

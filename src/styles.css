@@ -47,6 +47,8 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .empty-slot, .mini-charm { width: 86px; height: 58px; border-radius: 9px; }
 .empty-slot { display: grid; place-items: center; border: 1px dashed #35453c; color: #34443b; font-size: 24px; }
 .mini-charm { display: flex; flex-direction: column; justify-content: center; align-items: center; background: #101a16; border: 1px solid var(--accent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 22%, transparent); }
+.mini-charm:is(button) { padding: 0; color: inherit; cursor: pointer; font: inherit; transition: filter .16s ease, transform .16s ease; }
+.mini-charm:is(button):hover { filter: brightness(1.18); transform: translateY(-2px); }
 .mini-charm b { color: var(--accent); font-family: serif; font-size: 20px; }
 .mini-charm span { font-size: 9px; color: #d2d0c5; margin-top: 2px; }
 .message-line { min-height: 34px; margin: 14px 0 28px; color: #b2b6aa; font-family: 'Gowun Batang'; font-size: 14px; letter-spacing: .04em; }
@@ -121,6 +123,11 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .result-modal button { margin-top: 14px; }
 .rules-modal { width: min(650px, 100%); position: relative; }
 .close { position: absolute; right: 22px; top: 18px; border: 0; background: none; color: #9ca49e; font-size: 28px; cursor: pointer; }
+.charm-detail-overlay { z-index: 80; }
+.charm-detail-modal { width: min(360px, 100%); position: relative; padding: 30px 28px 27px; color: #e8e3d7; background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 14%, #14231b), #0a110d); border: 1px solid color-mix(in srgb, var(--accent) 65%, #26362d); border-radius: 14px; box-shadow: 0 25px 75px #000, 0 0 32px color-mix(in srgb, var(--accent) 16%, transparent); text-align: center; }
+.charm-detail-modal > i { width: 72px; height: 72px; display: grid; place-items: center; margin: 15px auto 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, #0b130f); border: 1px solid color-mix(in srgb, var(--accent) 55%, #26362d); border-radius: 50%; font: normal 38px serif; }
+.charm-detail-modal h2 { margin: 7px 0 10px; color: var(--accent); font: 700 27px 'Gowun Batang'; }
+.charm-detail-modal p { margin: 0; color: #bbc1b9; font-size: 13px; line-height: 1.7; }
 .rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 22px; }
 .rules-grid div { display: flex; justify-content: space-between; padding: 13px; background: #0a120e; border: 1px solid #29372f; border-radius: 7px; }
 .rules-grid strong { color: #e9c266; font-size: 13px; }
