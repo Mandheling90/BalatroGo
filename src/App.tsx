@@ -229,8 +229,10 @@ function App() {
                   style={{ '--blind-color': definition.color } as React.CSSProperties}
                   key={definition.english}
                 >
-                  <div className="blind-token"><span>{definition.icon}</span></div>
-                  <h3>{definition.name}</h3>
+                  <div className="blind-title">
+                    <div className="blind-token"><span>{definition.icon}</span></div>
+                    <h3>{definition.name}</h3>
+                  </div>
                   <div className="blind-stakes">
                     <div><span>목표</span><strong>{blind.target}점</strong></div>
                     <div><span>보상</span><strong>{blind.reward}냥 + 잔여 턴</strong></div>
