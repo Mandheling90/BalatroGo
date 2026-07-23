@@ -14,7 +14,7 @@ export function GoStopModal({ score, goCount, canGo, onGo, onStop }: {
     <p>현재 {score}점 · {goCount}고</p>
     {canGo && <div className="go-risk-warning"><strong>주의</strong> 고를 선택하면 다음 턴에 {score + 1}점을 달성해야 하며, 미달하면 게임오버됩니다.</div>}
     <div className={`go-stop-actions ${canGo ? '' : 'stop-only'}`}>
-      {canGo && <button className="go-button" onClick={onGo}>고<span>{2 + goCount}냥 획득 · 다음 {score + 1}점</span></button>}
+      {canGo && <button className="go-button" onClick={onGo}>고<span>{2 + goCount}냥 획득 · 최종 배수 상승 후 추가 득점 필요</span></button>}
       <button className="stop-button" onClick={onStop}>스톱<span>블라인드 클리어</span></button>
     </div>
   </section></div>

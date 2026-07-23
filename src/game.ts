@@ -2,6 +2,8 @@ import { evaluatePatterns } from './scoring'
 import { applyScoreModifiers } from './game/modifiers/apply-score-modifiers'
 import { charms } from './game/modifiers/charms'
 import { HwatuCard } from './game/core/cards/types'
+import { calculateBalatroScore } from './game/scoring/calculate-score'
+import type { ScoreEvent } from './game/scoring/types'
 
 export type { CardKind, HwatuCard, CardDefinition } from './game/core/cards/types'
 export type { Charm } from './game/modifiers/types'
@@ -15,11 +17,17 @@ export interface ScoreResult {
   ribbon: number
   pi: number
   bonus: number
+  goScore: number
   total: number
   details: string[]
+  cardPoints: number
+  jokerPoints: number
+  multiplier: number
+  finalMultiplier: number
+  events: ScoreEvent[]
 }
 
-export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[], ruleBonus = 0, ruleDetails: string[] = []): ScoreResult {
+export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[], ruleBonus = 0, ruleDetails: string[] = [], goCount = 0): ScoreResult {
   const evaluation = evaluatePatterns(cards)
   const patternScore = (ids: string[]) => evaluation.completedPatterns
     .filter((pattern) => ids.includes(pattern.id))
@@ -45,13 +53,21 @@ export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[], ruleB
     },
   })
   const bonus = modifierResult.score + ruleBonus
+  const goScore = gwang + animal + ribbon + pi + bonus
+  const balatroScore = calculateBalatroScore({ cards, ownedCharmIds, ruleBonus, goCount })
   return {
     gwang,
     animal,
     ribbon,
     pi,
     bonus,
-    total: gwang + animal + ribbon + pi + bonus,
+    goScore,
+    total: balatroScore.total,
     details: [...baseDetails, ...modifierResult.details, ...ruleDetails],
+    cardPoints: balatroScore.cardPoints,
+    jokerPoints: balatroScore.jokerPoints,
+    multiplier: balatroScore.multiplier,
+    finalMultiplier: balatroScore.finalMultiplier,
+    events: balatroScore.events,
   }
 }

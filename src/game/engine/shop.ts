@@ -67,6 +67,9 @@ export function leaveShop(state: GameState): GameState {
     lastPlayedId: null,
     lastSubmittedId: null,
     lastCapturedIds: [],
+    lastScoreEvents: [],
+    lastRuleEffect: null,
+    lastTurnAction: null,
     lastMatchTarget: null,
   }
 }

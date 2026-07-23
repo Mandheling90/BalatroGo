@@ -185,19 +185,6 @@ function App() {
     })
   }, [isResolving, isScorePlaying])
 
-  useEffect(() => {
-    if (!isResolving || !game.lastSubmittedId || game.lastCapturedIds.length || game.lastScoreEvents.length) return
-    const delay = game.lastRuleEffect === 'peok' ? 1600 : 1250
-    const timer = window.setTimeout(() => setIsResolving(false), delay)
-    return () => window.clearTimeout(timer)
-  }, [
-    game.lastCapturedIds.length,
-    game.lastRuleEffect,
-    game.lastScoreEvents.length,
-    game.lastSubmittedId,
-    isResolving,
-  ])
-
   const resolveTurn = (pickedMatchId?: string) => {
     const floor = document.querySelector<HTMLElement>('.floor-spread')
     const selectedCard = document.querySelector<HTMLElement>('.player-hand .hwatu-card[aria-pressed="true"]')
@@ -363,13 +350,6 @@ function App() {
           <strong>뻑!</strong>
         </div>
       )}
-      {isResolving && game.lastRuleEffect === 'jjok' && (
-        <div className="jjok-effect" role="status" aria-label="쪽 성공">
-          <i />
-          <strong>쪽!</strong>
-          <small>보너스 피 +1</small>
-        </div>
-      )}
       {game.phase === 'blind' && <header className="topbar">
         <div className="brand">
           <span className="brand-mark">花</span>
@@ -426,12 +406,14 @@ function App() {
         <aside className="status-rail panel">
           <div className="round-label">ANTE {game.round} · {currentBlind.english}</div>
           <div className="goal-score">
-            <strong>{displayScore.total} / {game.target}</strong>
+            <span>화점</span>
+            <strong className={game.lastCapturedIds.length ? 'score-pop' : ''}>{displayScore.total}</strong>
+            <i>/ 목표 {game.target} 화점</i>
           </div>
           <div className="balatro-score-strip" aria-label="점수 계산">
             <span className={`chip-score ${activeScoreEvent?.baseDelta ? 'is-active' : ''}`}><i>화점</i><b key={activeScoreEvent?.baseDelta ? activeScoreEvent.id : 'base'}>{displayScore.base}</b></span>
             <em>×</em>
-            <span className="mult-score"><i>배수</i><b>{displayScore.mult}</b></span>
+            <span className="mult-score"><i>적용 배수</i><b>{displayScore.mult}</b></span>
           </div>
           <div className="progress-track"><div style={{ width: `${Math.min(100, displayScore.total / game.target * 100)}%` }} /></div>
           <div className="turn-info"><span>진행 턴</span><strong>{Math.min(turn, 10)} / 10</strong></div>

@@ -2,28 +2,36 @@ import { scoreCaptured } from '../../game'
 import { getBlind } from '../data/blinds'
 import type { GameState } from './types'
 import { createShopOffers, INITIAL_REROLL_COST } from './shop'
+import { calculateBalatroScore } from '../scoring/calculate-score'
 
-export const canChooseGo = (state: Pick<GameState, 'awaitingGoStop' | 'hand'>) =>
-  state.awaitingGoStop && state.hand.length > 0
+export const canChooseGo = (state: Pick<GameState, 'awaitingGoStop' | 'hand' | 'deck' | 'turnsUsed'>) =>
+  state.awaitingGoStop && state.turnsUsed < 10 && (state.hand.length > 0 || state.deck.length > 0)
 
 export function chooseGo(state: GameState): GameState {
   if (!canChooseGo(state)) return state
 
-  const currentScore = scoreCaptured(
+  const currentGoScore = scoreCaptured(
     state.captured,
     state.ownedCharms,
     state.ruleBonus,
     state.ruleDetails,
-  ).total
-  const reward = 2 + state.goCount
+    state.goCount,
+  ).goScore
   return {
     ...state,
     awaitingGoStop: false,
     goCount: state.goCount + 1,
-    goRequiredScore: currentScore + 1,
-    coins: state.coins + reward,
+    goRequiredScore: currentGoScore + 1,
     phase: 'playing',
-    message: `${state.goCount + 1}고! ${reward}냥을 받고 다음 필요 점수는 ${currentScore + 1}점입니다.`,
+    message: `${state.goCount + 1}고! 다음 고스톱 점수는 ${currentGoScore + 1}점이 필요합니다.`,
+    lastScoreEvents: calculateBalatroScore({
+      cards: state.captured,
+      previousCards: state.captured,
+      ownedCharmIds: state.ownedCharms,
+      ruleBonus: state.ruleBonus,
+      goCount: state.goCount + 1,
+      previousGoCount: state.goCount,
+    }).events,
   }
 }
 

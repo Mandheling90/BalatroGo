@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { HwatuCard } from '../../game/core/cards/types'
+import { getCardPoints } from '../../game/scoring/calculate-score'
 
 interface HwatuCardViewProps {
   card: HwatuCard
@@ -30,6 +31,7 @@ export function Card({
   const isBonusPi = card.definitionId === 'bonus-pi'
   const bonusTone = card.bonusEvent === '폭탄' ? 'bomb'
     : card.bonusEvent === '따닥' ? 'ttadak'
+      : card.bonusEvent === '쪽' ? 'jjok'
       : card.bonusEvent === '쓸' ? 'sweep'
         : 'peok'
 
@@ -45,7 +47,10 @@ export function Card({
         '--fly-offset': `${(effectIndex - 1.5) * 16}px`,
       } as CSSProperties}
     >
-      <span className="month">{card.month}월</span>
+      {!isBonusPi && <>
+        <span className="month">{card.month}월</span>
+        <span className="flower-point">{getCardPoints(card)}화점</span>
+      </>}
       <span className="plant">{card.symbol}</span>
       <span className="flower">{card.flower}</span>
       {isBonusPi && <span className="bonus-pi-mark"><b>+1 피</b><small>{card.bonusEvent ?? '보너스'}</small></span>}

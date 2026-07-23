@@ -14,7 +14,12 @@ export interface ScoreModifierContext {
   counts: { gwang: number; ribbon: number; junk: number; bird: number; completedMonths: number }
 }
 
-export interface ScoreModifierResult { score: number; detail?: string }
+export interface ScoreModifierResult {
+  score: number
+  multDelta?: number
+  xMult?: number
+  detail?: string
+}
 
 export interface RuleModifier extends Charm {
   priority: number

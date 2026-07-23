@@ -9,9 +9,9 @@ export function dealRound() {
 }
 
 export const createNewGame = (): GameState => ({
-  round: 1, blindIndex: 0, blindHistory: ['pending', 'pending', 'pending'], target: 3, coins: 6,
+  round: 1, blindIndex: 0, blindHistory: ['pending', 'pending', 'pending'], target: 300, coins: 6,
   ...dealRound(), selected: null, ownedCharms: [], shopOfferIds: [], shopRerollCost: 2, phase: 'blind', pendingPhase: null, gameOverReason: null,
   message: '도전할 블라인드를 확인하세요.', lastRevealed: [], lastPlayedId: null,
   lastSubmittedId: null, lastCapturedIds: [], lastMatchTarget: null, ruleBonus: 0,
-  ruleDetails: [], shakenMonths: [], awaitingGoStop: false, goCount: 0, goRequiredScore: 3,
+  ruleDetails: [], shakenMonths: [], awaitingGoStop: false, goCount: 0, goRequiredScore: 3, lastScoreEvents: [], lastRuleEffect: null, turnsUsed: 0, lastTurnAction: null,
 })

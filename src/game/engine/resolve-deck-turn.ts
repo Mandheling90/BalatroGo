@@ -1,0 +1,67 @@
+import { scoreCaptured } from '../../game'
+import { calculateBalatroScore } from '../scoring/calculate-score'
+import { getFloorPosition } from './floor-layout'
+import type { GameState } from './types'
+import { prepareBlindClear } from './clear-blind'
+
+export function resolveDeckTurn(current: GameState): GameState {
+  if (
+    current.phase !== 'playing'
+    || current.awaitingGoStop
+    || current.turnsUsed >= 10
+    || current.deck.length === 0
+    || current.lastTurnAction === 'deck'
+  ) return current
+
+  const revealed = current.deck.slice(0, 2)
+  const placedTable = [...current.table, ...revealed]
+  const completedMonths = Array.from(new Set(revealed.map((card) => card.month)))
+    .filter((month) => placedTable.filter((card) => card.month === month).length === 4)
+  const newlyCaptured = placedTable.filter((card) => completedMonths.includes(card.month))
+  const table = placedTable.filter((card) => !completedMonths.includes(card.month))
+  const captured = [...current.captured, ...newlyCaptured]
+  const nextScore = scoreCaptured(
+    captured,
+    current.ownedCharms,
+    current.ruleBonus,
+    current.ruleDetails,
+    current.goCount,
+  )
+  const turnScore = calculateBalatroScore({
+    cards: captured,
+    previousCards: current.captured,
+    ownedCharmIds: current.ownedCharms,
+    ruleBonus: current.ruleBonus,
+    goCount: current.goCount,
+  })
+  const nextTurnsUsed = current.turnsUsed + 1
+  const reachedTarget = nextScore.total >= current.target
+  const failed = !reachedTarget && nextTurnsUsed >= 10
+  const placedLabel = revealed.map((card) => `${card.month}월`).join(' · ')
+  const captureLabel = completedMonths.length
+    ? ` ${completedMonths.join('·')}월 네 장이 모여 모두 획득했습니다.`
+    : ' 같은 월이 있어도 매칭하지 않고 바닥에 놓았습니다.'
+
+  const result: GameState = {
+    ...current,
+    deck: current.deck.slice(revealed.length),
+    table,
+    captured,
+    selected: null,
+    pendingPhase: failed ? 'gameover' : null,
+    gameOverReason: failed ? `10턴을 모두 사용했지만 목표 화점 ${current.target}점을 달성하지 못했습니다.` : null,
+    awaitingGoStop: false,
+    message: `덱에서 ${placedLabel} 두 장을 펼쳤습니다.${captureLabel}`,
+    lastRevealed: revealed.map((card) => card.id),
+    lastCapturedMonths: completedMonths,
+    lastPlayedId: null,
+    lastSubmittedId: null,
+    lastCapturedIds: newlyCaptured.map((card) => card.id),
+    lastMatchTarget: completedMonths.length ? getFloorPosition(completedMonths[0] - 1, 12) : null,
+    lastScoreEvents: turnScore.events,
+    lastRuleEffect: null,
+    turnsUsed: nextTurnsUsed,
+    lastTurnAction: 'deck',
+  }
+  return reachedTarget ? prepareBlindClear(result) : result
+}

@@ -1,4 +1,5 @@
 import { HwatuCard } from '../core/cards/types'
+import type { ScoreEvent } from '../scoring/types'
 
 export type Phase = 'blind' | 'playing' | 'shop' | 'gameover'
 export type BlindIndex = 0 | 1 | 2
@@ -34,4 +35,8 @@ export interface GameState {
   awaitingGoStop: boolean
   goCount: number
   goRequiredScore: number
+  lastScoreEvents: ScoreEvent[]
+  lastRuleEffect: 'peok' | 'jjok' | null
+  turnsUsed: number
+  lastTurnAction: 'card' | 'deck' | null
 }
