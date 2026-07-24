@@ -43,6 +43,10 @@ function App() {
   const [isScorePlaying, setIsScorePlaying] = useState(false)
   const [isMultiplying, setIsMultiplying] = useState(false)
   const [scoredCardCount, setScoredCardCount] = useState(0)
+  const [capturePlayback, setCapturePlayback] = useState<{ turnKey: string; pendingIds: string[] }>({
+    turnKey: '',
+    pendingIds: [],
+  })
   const [submitFlight, setSubmitFlight] = useState({ fromX: 0, fromY: 0, toX: 0, toY: 0 })
   const [activeScoreEvent, setActiveScoreEvent] = useState<ScoreEvent | null>(null)
   const [displayScore, setDisplayScore] = useState({ base: 0, mult: 1, xMult: 1, total: 0 })
@@ -54,6 +58,7 @@ function App() {
   )
   const completedPatterns = useMemo(() => evaluatePatterns(game.captured).completedPatterns, [game.captured])
   const scoringCardEvents = game.lastScoreEvents.filter((event) => event.sourceType === 'card')
+  const scoreTurnKey = game.lastScoreEvents.map((event) => event.id).join('|')
   const activeScoringCardIndex = activeScoreEvent?.sourceType === 'card'
     ? scoringCardEvents.findIndex((event) => event.id === activeScoreEvent.id)
     : -1
@@ -83,6 +88,10 @@ function App() {
       && card.month >= 1,
   )
   const capturedRevealedCards = game.captured.filter((card) => game.lastRevealed.includes(card.id))
+  const visibleCaptureAnimationIds = (['gwang', 'animal', 'ribbon', 'pi'] as const)
+    .flatMap((category) => categoryCards(game.captured, category).slice(-4))
+    .filter((card) => game.lastCapturedIds.includes(card.id))
+    .map((card) => card.id)
   const getCaptureEffectDelay = (card: HwatuCard) => {
     const matchingRevealIndex = capturedRevealedCards.findIndex((revealed) => revealed.month === card.month)
     return matchingRevealIndex >= 0 ? 1200 + matchingRevealIndex * 900 : 1200
@@ -117,6 +126,13 @@ function App() {
   }, [game.pendingPhase, isScorePlaying])
 
   useEffect(() => {
+    setCapturePlayback({
+      turnKey: scoreTurnKey,
+      pendingIds: visibleCaptureAnimationIds,
+    })
+  }, [scoreTurnKey, game.lastCapturedIds])
+
+  useEffect(() => {
     const events = game.lastScoreEvents
     if (!events.length) {
       setIsScorePlaying(false)
@@ -124,6 +140,7 @@ function App() {
       setDisplayScore({ base: game.lastTurnBasePoints, mult: score.multiplier, xMult: score.finalMultiplier, total: game.scoreTotal })
       return
     }
+    if (capturePlayback.turnKey !== scoreTurnKey || capturePlayback.pendingIds.length > 0) return
     setIsScorePlaying(true)
     const baseDelta = events.reduce((sum, event) => sum + (event.baseDelta ?? 0), 0)
     const multDelta = events.reduce((sum, event) => sum + (event.multDelta ?? 0), 0)
@@ -139,12 +156,7 @@ function App() {
     setActiveScoreEvent(null)
     setScoredCardCount(0)
     const timers: number[] = []
-    const captureAnimationEnd = game.lastCapturedIds.length
-      ? Math.max(...game.captured
-        .filter((card) => game.lastCapturedIds.includes(card.id))
-        .map((card) => getCaptureEffectDelay(card) + 520))
-      : 0
-    let elapsed = Math.max(scorePlaybackConfig.startDelayMs, captureAnimationEnd + 120)
+    let elapsed = 120
     events.forEach((event) => {
       elapsed += event.emphasis === 'normal' ? scorePlaybackConfig.eventDelayMs : scorePlaybackConfig.strongDelayMs
       timers.push(window.setTimeout(() => {
@@ -200,7 +212,7 @@ function App() {
       setIsScorePlaying(false)
       setIsMultiplying(false)
     }
-  }, [game.captured, game.goCount, game.lastCapturedIds, game.lastRevealed, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnScore, game.scoreTotal, score.finalMultiplier, score.multiplier])
+  }, [capturePlayback, game.goCount, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnScore, game.scoreTotal, score.finalMultiplier, score.multiplier, scoreTurnKey])
 
   useEffect(() => {
     if (isResolving || isScorePlaying || !queuedCardSelection.current) return
@@ -504,7 +516,7 @@ function App() {
                 const cards = categoryCards(game.captured, group.key)
                 const visibleCards = cards.slice(-4)
                 const hiddenCount = cards.length - visibleCards.length
-                return <div className={`won-group ${group.patterns.length ? 'has-pattern' : ''} ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span>{group.patterns.length > 0 && <small className="won-pattern">{group.patterns.join(' · ')}</small>}<div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={getCaptureEffectDelay(card)} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
+                return <div className={`won-group ${group.patterns.length ? 'has-pattern' : ''} ${visibleCards.some((card) => game.lastCapturedIds.includes(card.id)) ? 'just-scored' : ''}`} key={group.key}><span>{group.label} · {cards.length}장</span>{group.patterns.length > 0 && <small className="won-pattern">{group.patterns.join(' · ')}</small>}<div>{visibleCards.map((card, index) => <Card card={card} compact flyToScore={game.lastCapturedIds.includes(card.id)} effectIndex={index} effectDelayMs={getCaptureEffectDelay(card)} onFlyToScoreEnd={() => setCapturePlayback((current) => current.turnKey === scoreTurnKey ? { ...current, pendingIds: current.pendingIds.filter((id) => id !== card.id) } : current)} key={card.id} />)}{hiddenCount > 0 && <em className="won-more">+{hiddenCount}</em>}{!cards.length && <i>아직 없음</i>}</div><b>{group.score}점</b></div>
               })}
             </div>
           </section>

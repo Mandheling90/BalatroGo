@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { AnimationEvent, CSSProperties } from 'react'
 import type { HwatuCard } from '../../game/core/cards/types'
 import { getCardPoints } from '../../game/scoring/calculate-score'
 
@@ -13,6 +13,7 @@ interface HwatuCardViewProps {
   effectIndex?: number
   effectDelayMs?: number
   onClick?: () => void
+  onFlyToScoreEnd?: () => void
 }
 
 export function Card({
@@ -26,6 +27,7 @@ export function Card({
   effectIndex = 0,
   effectDelayMs,
   onClick,
+  onFlyToScoreEnd,
 }: HwatuCardViewProps) {
   const Tag = onClick ? 'button' : 'div'
   const isBonusPi = card.definitionId === 'bonus-pi'
@@ -39,6 +41,9 @@ export function Card({
     <Tag
       className={`hwatu-card kind-${card.kind} ${isBonusPi ? `bonus-pi bonus-${bonusTone}` : ''} ${selected ? 'selected' : ''} ${compact ? 'compact' : ''} ${revealed ? 'revealed' : ''} ${slapped ? 'slapped' : ''} ${flyToScore ? 'fly-to-score' : ''} ${submittedCapture ? 'submitted-capture' : ''}`}
       onClick={onClick}
+      onAnimationEnd={(event: AnimationEvent<HTMLElement>) => {
+        if (flyToScore && event.animationName === 'floorToScore') onFlyToScoreEnd?.()
+      }}
       aria-pressed={onClick ? selected : undefined}
       style={{
         '--sprite-position': `${(card.spriteColumn / 7) * 100}% ${(card.spriteRow / 5) * 100}%`,
