@@ -15,4 +15,5 @@ export const createNewGame = (): GameState => ({
   lastSubmittedId: null, lastCapturedIds: [], lastMatchTarget: null, ruleBonus: 0,
   ruleDetails: [], shakenMonths: [], awaitingGoStop: false, goCount: 0, goRequiredScore: 3, lastScoreEvents: [], lastRuleEffect: null, turnsUsed: 0, lastTurnAction: null,
   scoreTotal: 0, lastTurnBasePoints: 0, lastTurnScore: 0,
+  unlimitedTurns: false,
 })

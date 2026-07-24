@@ -42,4 +42,5 @@ export interface GameState {
   scoreTotal: number
   lastTurnBasePoints: number
   lastTurnScore: number
+  unlimitedTurns: boolean
 }

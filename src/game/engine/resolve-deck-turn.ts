@@ -8,7 +8,7 @@ export function resolveDeckTurn(current: GameState): GameState {
   if (
     current.phase !== 'playing'
     || current.awaitingGoStop
-    || current.turnsUsed >= 10
+    || (!current.unlimitedTurns && current.turnsUsed >= 10)
     || current.deck.length === 0
     || current.lastTurnAction === 'deck'
   ) return current
@@ -32,10 +32,10 @@ export function resolveDeckTurn(current: GameState): GameState {
   const scoreTotal = current.scoreTotal + settlement.score
   const reachedTarget = scoreTotal >= current.target
   const nextGoStopScore = scoreCaptured(captured, current.ownedCharms, current.ruleBonus, current.ruleDetails, current.goCount).goScore
-  const failed = current.goCount === 0 && !reachedTarget && nextTurnsUsed >= 10
+  const failed = !current.unlimitedTurns && current.goCount === 0 && !reachedTarget && nextTurnsUsed >= 10
   const reachedGoChoice = !failed && current.goCount === 0 && !reachedTarget && nextGoStopScore >= current.goRequiredScore
   const remainingDeckCount = current.deck.length - revealed.length
-  const canContinueGo = nextTurnsUsed < 10 && (current.hand.length > 0 || remainingDeckCount > 0)
+  const canContinueGo = (current.unlimitedTurns || nextTurnsUsed < 10) && (current.hand.length > 0 || remainingDeckCount > 0)
   const placedLabel = revealed.map((card) => `${card.month}월`).join(' · ')
   const captureLabel = completedMonths.length
     ? ` ${completedMonths.join('·')}월 네 장이 모여 모두 획득했습니다.`

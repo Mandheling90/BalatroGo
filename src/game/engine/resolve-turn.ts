@@ -78,9 +78,9 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
   const failedGo = current.goCount > 0 && nextGoStopScore < current.goRequiredScore
   const reachedGoRequirement = nextGoStopScore >= current.goRequiredScore
   const nextTurnsUsed = current.turnsUsed + 1
-  const failed = failedGo || (!reachedTarget && nextTurnsUsed >= 10)
+  const failed = failedGo || (!current.unlimitedTurns && !reachedTarget && nextTurnsUsed >= 10)
   const reachedGoChoice = !failed && !reachedTarget && reachedGoRequirement
-  const canContinueGo = nextTurnsUsed < 10 && (remainingHand.length > 0 || current.deck.length > 1)
+  const canContinueGo = (current.unlimitedTurns || nextTurnsUsed < 10) && (remainingHand.length > 0 || current.deck.length > 1)
   const resultMessages: string[] = []
   if (isPeok) resultMessages.push(`${played.month}월 뻑! 세 장이 바닥에 묶였습니다.`)
   else if (isBomb) resultMessages.push(`${played.month}월 폭탄! 손패 세 장과 바닥패를 한꺼번에 가져왔습니다.`)

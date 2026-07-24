@@ -155,6 +155,28 @@ describe('뻑 이후 진행', () => {
     expect(result.gameOverReason).toContain('고를 선택했지만')
   })
 
+  it('디버그 무제한 턴에서는 10턴에 도달해도 턴 제한 게임오버가 되지 않는다', () => {
+    const deck = createDeck()
+    const state = {
+      ...createNewGame(),
+      phase: 'playing' as const,
+      target: 9999,
+      turnsUsed: 9,
+      unlimitedTurns: true,
+      hand: [deck[0]],
+      deck: [deck[4]],
+      table: [],
+      captured: [],
+      selected: deck[0].id,
+    }
+
+    const result = resolveGameTurn(state)
+
+    expect(result.turnsUsed).toBe(10)
+    expect(result.pendingPhase).toBeNull()
+    expect(result.gameOverReason).toBeNull()
+  })
+
   it('쪽에 성공하면 두 장을 획득하고 보너스 피 한 장을 지급한다', () => {
     const monthCards = createDeck().filter((card) => card.month === 1)
     const state = {

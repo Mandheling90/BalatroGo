@@ -29,8 +29,19 @@ const handKindOrder: Record<CardKind, number> = {
 const categoryCards = (cards: HwatuCard[], category: 'gwang' | 'animal' | 'ribbon' | 'pi') =>
   cards.filter((card) => category === 'ribbon' ? card.kind.startsWith('ribbon') : card.kind === category)
 
+const hasUnlimitedTurnDebug = () => {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  return params.get('debug') === 'true'
+}
+
+const createAppGame = (): GameState => ({
+  ...createNewGame(),
+  unlimitedTurns: hasUnlimitedTurnDebug(),
+})
+
 function App() {
-  const [game, setGame] = useState<GameState>(createNewGame)
+  const [game, setGame] = useState<GameState>(createAppGame)
   const [showRules, setShowRules] = useState(false)
   const [selectedCharmId, setSelectedCharmId] = useState<string | null>(null)
   const [matchChoice, setMatchChoice] = useState<{
@@ -77,6 +88,7 @@ function App() {
   const selectedCharm = charms.find((charm) => charm.id === selectedCharmId)
   const selectedMonth = game.hand.find((card) => card.id === game.selected)?.month
   const turn = game.turnsUsed
+  const turnLimitReached = !game.unlimitedTurns && game.turnsUsed >= 10
   const sortedHand = useMemo(() => [...game.hand].sort((a, b) => {
     if (handSort === 'kind') {
       const kindDifference = handKindOrder[a.kind] - handKindOrder[b.kind]
@@ -328,7 +340,7 @@ function App() {
   }
 
   const playTurn = () => {
-    if (!game.selected || game.phase !== 'playing' || game.awaitingGoStop || game.turnsUsed >= 10 || isResolving || isScorePlaying) return
+    if (!game.selected || game.phase !== 'playing' || game.awaitingGoStop || turnLimitReached || isResolving || isScorePlaying) return
     const played = game.hand.find((card) => card.id === game.selected)
     if (!played) return
     const matches = game.table.filter((card) => card.month === played.month)
@@ -340,7 +352,7 @@ function App() {
   }
 
   const playDeckTurn = () => {
-    if (game.phase !== 'playing' || game.awaitingGoStop || game.turnsUsed >= 10 || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying) return
+    if (game.phase !== 'playing' || game.awaitingGoStop || turnLimitReached || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying) return
     setMatchChoice(null)
     queuedCardSelection.current = null
     setIsResolving(true)
@@ -565,7 +577,7 @@ function App() {
             <span className={`mult-score ${activeScoreEvent?.multDelta ? 'is-active' : ''}`}><i>배수</i><b key={activeScoreEvent?.multDelta ? activeScoreEvent.id : 'mult'}>{displayScore.mult}</b></span>
           </div>
           <div className="progress-track"><div style={{ width: `${Math.min(100, game.scoreTotal / game.target * 100)}%` }} /></div>
-          <div className="turn-info"><span>진행 턴</span><strong>{Math.min(turn, 10)} / 10</strong></div>
+          <div className="turn-info"><span>진행 턴{game.unlimitedTurns ? ' · 디버그' : ''}</span><strong>{game.unlimitedTurns ? `${turn} / ∞` : `${Math.min(turn, 10)} / 10`}</strong></div>
 
           <section className="rail-won-pile">
             <div className="won-pile-heading">
@@ -600,7 +612,7 @@ function App() {
                 className="center-deck"
                 type="button"
                 aria-label={`남은 패 ${game.deck.length}장. 클릭하면 한 턴을 사용해 두 장을 바닥에 놓습니다.`}
-                disabled={game.phase !== 'playing' || game.awaitingGoStop || game.turnsUsed >= 10 || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying}
+                disabled={game.phase !== 'playing' || game.awaitingGoStop || turnLimitReached || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying}
                 onClick={playDeckTurn}
               >
                 <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
@@ -797,7 +809,7 @@ function App() {
           <span className="stamp">敗</span><p>{currentBlind.name} 실패</p><h2>앤티 {game.round} · {game.scoreTotal}점</h2>
           {game.gameOverReason && <div className="game-over-reason"><strong>게임오버 사유</strong><span>{game.gameOverReason}</span></div>}
           <p>목표 화점 {game.target}점까지 {Math.max(0, game.target - game.scoreTotal)}점이 모자랐습니다.</p>
-          <button className="primary-action" onClick={() => setGame(createNewGame())}>새 판 시작</button>
+          <button className="primary-action" onClick={() => setGame(createAppGame())}>새 판 시작</button>
         </section></div>
       )}
 

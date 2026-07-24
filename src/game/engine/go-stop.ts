@@ -1,8 +1,8 @@
 import { scoreCaptured } from '../../game'
 import type { GameState } from './types'
 
-export const canChooseGo = (state: Pick<GameState, 'awaitingGoStop' | 'hand' | 'deck' | 'turnsUsed'>) =>
-  state.awaitingGoStop && state.turnsUsed < 10 && (state.hand.length > 0 || state.deck.length > 0)
+export const canChooseGo = (state: Pick<GameState, 'awaitingGoStop' | 'hand' | 'deck' | 'turnsUsed' | 'unlimitedTurns'>) =>
+  state.awaitingGoStop && (state.unlimitedTurns || state.turnsUsed < 10) && (state.hand.length > 0 || state.deck.length > 0)
 
 export function chooseGo(state: GameState): GameState {
   if (!canChooseGo(state)) return state
