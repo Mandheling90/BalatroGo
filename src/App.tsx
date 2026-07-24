@@ -47,6 +47,7 @@ function App() {
     turnKey: '',
     pendingIds: [],
   })
+  const [completedSettlementKey, setCompletedSettlementKey] = useState('')
   const [submitFlight, setSubmitFlight] = useState({ fromX: 0, fromY: 0, toX: 0, toY: 0 })
   const [activeScoreEvent, setActiveScoreEvent] = useState<ScoreEvent | null>(null)
   const [displayScore, setDisplayScore] = useState({ base: 0, mult: 1, xMult: 1, total: 0 })
@@ -59,6 +60,7 @@ function App() {
   const completedPatterns = useMemo(() => evaluatePatterns(game.captured).completedPatterns, [game.captured])
   const scoringCardEvents = game.lastScoreEvents.filter((event) => event.sourceType === 'card')
   const scoreTurnKey = game.lastScoreEvents.map((event) => event.id).join('|')
+  const isSettlementPending = game.lastScoreEvents.length > 0 && completedSettlementKey !== scoreTurnKey
   const activeScoringCardIndex = activeScoreEvent?.sourceType === 'card'
     ? scoringCardEvents.findIndex((event) => event.id === activeScoreEvent.id)
     : -1
@@ -116,14 +118,14 @@ function App() {
   }, [game.lastPlayedId, game.lastCapturedIds])
 
   useEffect(() => {
-    if (!game.pendingPhase || isScorePlaying) return
+    if (!game.pendingPhase || isSettlementPending) return
     const timer = window.setTimeout(() => {
       setGame((current) => current.pendingPhase
         ? { ...current, phase: current.pendingPhase, pendingPhase: null }
         : current)
     }, 350)
     return () => window.clearTimeout(timer)
-  }, [game.pendingPhase, isScorePlaying])
+  }, [game.pendingPhase, isSettlementPending])
 
   useEffect(() => {
     setCapturePlayback({
@@ -186,6 +188,7 @@ function App() {
         setDisplayScore((current) => ({ ...current, total: Math.round(startingTotal + (game.scoreTotal - startingTotal) * eased) }))
         if (progress < 1) timers.push(window.requestAnimationFrame(tick))
         else {
+          setCompletedSettlementKey(scoreTurnKey)
           setIsScorePlaying(false)
           setIsResolving(false)
         }
@@ -203,6 +206,7 @@ function App() {
       setIsScorePlaying(false)
       setIsMultiplying(false)
       setIsResolving(false)
+      setCompletedSettlementKey(scoreTurnKey)
     }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.multiplyDelayMs + scorePlaybackConfig.countUpMs + 120))
     return () => {
       timers.forEach((timer) => {
@@ -414,13 +418,19 @@ function App() {
             </div>
             <div className={`score-popup-multiplier ${activeScoreEvent?.multDelta || isMultiplying ? 'is-active' : ''}`}>
               <i>×</i>
-              <strong>{displayScore.mult}</strong>
-              {isMultiplying && <small>= {game.lastTurnScore}</small>}
+              <strong key={activeScoreEvent?.multDelta ? activeScoreEvent.id : isMultiplying ? 'multiply' : 'multiplier'}>
+                {displayScore.mult}
+              </strong>
+              {activeScoreEvent?.multDelta
+                ? <small className="score-mult-reason" key={`reason-${activeScoreEvent.id}`}>
+                    {activeScoreEvent.label} · 배수 +{activeScoreEvent.multDelta}
+                  </small>
+                : isMultiplying && <small>= {game.lastTurnScore}</small>}
             </div>
           </div>
         </div>
       )}
-      {activeScoreEvent && activeScoreEvent.sourceType !== 'card' && (
+      {activeScoreEvent && activeScoreEvent.sourceType !== 'card' && !activeScoreEvent.multDelta && (
         <div className={`score-event-pop score-event-${activeScoreEvent.sourceType} ${activeScoreEvent.emphasis}`} role="status">
           <strong>{activeScoreEvent.label}</strong>
           <span>
@@ -510,7 +520,10 @@ function App() {
           <div className="turn-info"><span>진행 턴</span><strong>{Math.min(turn, 10)} / 10</strong></div>
 
           <section className="rail-won-pile">
-            <span className="eyebrow">획득패</span>
+            <div className="won-pile-heading">
+              <span className="eyebrow">획득패</span>
+              <span className="go-stop-score">고스톱 점수 <strong>{score.goScore}점</strong></span>
+            </div>
             <div className="won-groups">
               {capturedGroups.map((group) => {
                 const cards = categoryCards(game.captured, group.key)
