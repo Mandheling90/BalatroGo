@@ -160,4 +160,21 @@ describe('Balatro-style score calculation', () => {
     expect(result.jokerMultiplier).toBe(0)
     expect(result.events.some((event) => event.sourceId === 'yaku-bell')).toBe(false)
   })
+
+  it('쌍월경은 같은 월 카드를 4장 완성한 증가분에만 화점을 준다', () => {
+    const firstThree = Array.from({ length: 3 }, (_, index) => card(`jan-pi-${index}`, 'pi', 1))
+    const beforeCompletion = calculateBalatroScore({
+      cards: firstThree,
+      previousCards: [],
+      ownedCharmIds: ['moon'],
+    })
+    const completed = calculateBalatroScore({
+      cards: [...firstThree, card('jan-pi-3', 'pi', 1)],
+      previousCards: firstThree,
+      ownedCharmIds: ['moon'],
+    })
+
+    expect(beforeCompletion.events.some((event) => event.sourceId === 'moon')).toBe(false)
+    expect(completed.events.find((event) => event.sourceId === 'moon')).toMatchObject({ baseDelta: 1 })
+  })
 })

@@ -1,7 +1,7 @@
 import { RuleModifier } from './types'
 
 export const charmModifiers: RuleModifier[] = [
-  { id: 'moon', name: '쌍월경', icon: '◑', description: '완성해 가져온 달마다 보너스 1점', price: 7, accent: '#ffe49a', priority: 100, modifyScore: ({ counts }) => ({ score: counts.completedMonths, detail: counts.completedMonths ? `쌍월경 ${counts.completedMonths}점` : undefined }) },
+  { id: 'moon', name: '쌍월경', icon: '◑', description: '같은 월 4장을 완성해 획득할 때마다 +1 화점', price: 7, accent: '#ffe49a', priority: 100, modifyScore: ({ counts }) => ({ score: counts.completeMonthSets, detail: counts.completeMonthSets ? `쌍월경 ${counts.completeMonthSets} 화점` : undefined }) },
   { id: 'gwang', name: '광명부', icon: '光', description: '획득한 광 2장마다 보너스 1점', price: 8, accent: '#ffd15c', priority: 100, modifyScore: ({ counts }) => { const score = Math.floor(counts.gwang / 2); return { score, detail: score ? `광명부 ${score}점` : undefined } } },
   { id: 'pi', name: '피바람', icon: '血', description: '피 점수패 7장부터 1점 추가', price: 6, accent: '#ff6b57', priority: 100, modifyScore: ({ counts }) => ({ score: counts.junk >= 7 ? 1 : 0, detail: counts.junk >= 7 ? '피바람 1점' : undefined }) },
   { id: 'ribbon', name: '삼색 매듭', icon: '結', description: '띠 점수패 3장부터 1점 추가', price: 7, accent: '#61d8ff', priority: 100, modifyScore: ({ counts }) => ({ score: counts.ribbon >= 3 ? 1 : 0, detail: counts.ribbon >= 3 ? '삼색 매듭 1점' : undefined }) },

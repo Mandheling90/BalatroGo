@@ -138,6 +138,7 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     scoreTotal,
     lastTurnBasePoints: goFailed ? 0 : settlement.basePoints,
     lastTurnScore: settledScore,
+    lastTurnMultiplier: goFailed ? 1 : turnScore.multiplier,
     lastTurnFinalMultiplier: goFailed ? 1 : turnScore.finalMultiplier,
     goCount: goFailed ? 0 : current.goCount,
     goRequiredScore: goFailed ? 0 : current.goRequiredScore,

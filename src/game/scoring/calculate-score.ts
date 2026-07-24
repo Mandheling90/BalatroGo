@@ -37,6 +37,8 @@ export const getSettlementScore = (result: BalatroScoreResult) => {
 
 const modifierContext = (cards: HwatuCard[]): ScoreModifierContext => {
   const evaluation = evaluatePatterns(cards)
+  const completeMonthSets = Array.from({ length: 12 }, (_, index) => index + 1)
+    .filter((month) => cards.filter((card) => card.month === month).length >= 4).length
   return {
     cards,
     yakuScore: evaluation.totalScore,
@@ -47,6 +49,7 @@ const modifierContext = (cards: HwatuCard[]): ScoreModifierContext => {
       junk: evaluation.counts.junk,
       bird: cards.filter((card) => card.bird).length,
       completedMonths: new Set(cards.filter((card) => card.month >= 1).map((card) => card.month)).size,
+      completeMonthSets,
     },
   }
 }

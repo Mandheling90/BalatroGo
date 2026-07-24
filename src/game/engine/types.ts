@@ -47,6 +47,7 @@ export interface GameState {
   scoreTotal: number
   lastTurnBasePoints: number
   lastTurnScore: number
+  lastTurnMultiplier: number
   lastTurnFinalMultiplier: number
   unlimitedTurns: boolean
 }

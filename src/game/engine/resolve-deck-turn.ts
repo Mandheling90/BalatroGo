@@ -80,6 +80,7 @@ export function resolveDeckTurn(current: GameState): GameState {
     scoreTotal,
     lastTurnBasePoints: goFailed ? 0 : settlement.basePoints,
     lastTurnScore: settledScore,
+    lastTurnMultiplier: goFailed ? 1 : turnScore.multiplier,
     lastTurnFinalMultiplier: goFailed ? 1 : turnScore.finalMultiplier,
     goCount: goFailed ? 0 : current.goCount,
     goRequiredScore: goFailed ? 0 : current.goRequiredScore,

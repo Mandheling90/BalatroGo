@@ -184,7 +184,7 @@ function App() {
       setIsScorePlaying(false)
       setIsMultiplying(false)
       setIsGoMultiplying(false)
-      setDisplayScore({ base: game.lastTurnBasePoints, mult: score.multiplier, xMult: game.lastTurnFinalMultiplier, total: game.scoreTotal })
+      setDisplayScore({ base: game.lastTurnBasePoints, mult: game.lastTurnMultiplier, xMult: game.lastTurnFinalMultiplier, total: game.scoreTotal })
       return
     }
     if (capturePlayback.turnKey !== scoreTurnKey || capturePlayback.pendingIds.length > 0) return
@@ -193,7 +193,7 @@ function App() {
     const multDelta = events.reduce((sum, event) => sum + (event.multDelta ?? 0), 0)
     let staged = {
       base: game.lastTurnBasePoints - baseDelta,
-      mult: score.multiplier - multDelta,
+      mult: game.lastTurnMultiplier - multDelta,
       xMult: 1,
     }
     const startingTotal = game.scoreTotal - game.lastTurnScore
@@ -249,7 +249,7 @@ function App() {
       setActiveScoreEvent(null)
       setDisplayScore({
         base: game.lastTurnBasePoints,
-        mult: score.multiplier,
+        mult: game.lastTurnMultiplier,
         xMult: game.lastTurnFinalMultiplier,
         total: game.scoreTotal,
       })
@@ -268,7 +268,7 @@ function App() {
       setIsMultiplying(false)
       setIsGoMultiplying(false)
     }
-  }, [capturePlayback, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnFinalMultiplier, game.lastTurnScore, game.scoreTotal, score.multiplier, scoreTurnKey])
+  }, [capturePlayback, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnFinalMultiplier, game.lastTurnMultiplier, game.lastTurnScore, game.scoreTotal, scoreTurnKey])
 
   useEffect(() => {
     if (isResolving || isScorePlaying || !queuedCardSelection.current) return
@@ -426,6 +426,7 @@ function App() {
         scoreTotal: 0,
         lastTurnBasePoints: 0,
         lastTurnScore: 0,
+        lastTurnMultiplier: 1,
         lastTurnFinalMultiplier: 1,
       }
     })

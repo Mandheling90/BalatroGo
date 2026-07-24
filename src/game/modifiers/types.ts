@@ -11,7 +11,7 @@ export interface Charm {
 
 export interface ScoreModifierContext {
   cards: HwatuCard[]
-  counts: { gwang: number; ribbon: number; junk: number; bird: number; completedMonths: number }
+  counts: { gwang: number; ribbon: number; junk: number; bird: number; completedMonths: number; completeMonthSets: number }
   yakuScore: number
   completedPatternIds: string[]
 }

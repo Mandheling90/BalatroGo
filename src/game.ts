@@ -52,11 +52,13 @@ export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[], ruleB
       junk: evaluation.counts.junk,
       bird: cards.filter((card) => card.bird).length,
       completedMonths: new Set(cards.filter((card) => card.month >= 1).map((card) => card.month)).size,
+      completeMonthSets: Array.from({ length: 12 }, (_, index) => index + 1)
+        .filter((month) => cards.filter((card) => card.month === month).length >= 4).length,
     },
   })
   const bonus = modifierResult.score + ruleBonus
-  const goScore = gwang + animal + ribbon + pi + bonus
-  const balatroScore = calculateBalatroScore({ cards, ownedCharmIds, ruleBonus, goCount })
+  const goScore = evaluation.totalScore
+  const balatroScore = calculateBalatroScore({ cards, previousCards: cards, ownedCharmIds, ruleBonus, goCount })
   return {
     gwang,
     animal,

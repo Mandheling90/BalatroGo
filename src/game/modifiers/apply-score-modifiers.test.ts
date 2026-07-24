@@ -5,7 +5,7 @@ const context = {
   cards: [],
   yakuScore: 0,
   completedPatternIds: [],
-  counts: { gwang: 2, ribbon: 3, junk: 7, bird: 0, completedMonths: 0 },
+  counts: { gwang: 2, ribbon: 3, junk: 7, bird: 0, completedMonths: 0, completeMonthSets: 0 },
 }
 
 describe('rule modifier pipeline', () => {
