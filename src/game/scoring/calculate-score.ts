@@ -39,6 +39,8 @@ const modifierContext = (cards: HwatuCard[]): ScoreModifierContext => {
   const evaluation = evaluatePatterns(cards)
   return {
     cards,
+    yakuScore: evaluation.totalScore,
+    completedPatternIds: evaluation.completedPatterns.map((pattern) => pattern.id),
     counts: {
       gwang: evaluation.counts.gwang,
       ribbon: evaluation.counts.ribbon,
@@ -81,17 +83,26 @@ export function calculateBalatroScore(input: CalculateScoreInput): BalatroScoreR
   let jokerMultiplier = 0
   let jokerFinalMultiplier = 1
   charmModifiers
-    .filter((modifier) => ownedCharmIds.includes(modifier.id) && modifier.modifyScore)
+    .filter((modifier) => ownedCharmIds.includes(modifier.id) && (modifier.modifyScore || modifier.modifySettlementScore))
     .sort((a, b) => a.priority - b.priority)
     .forEach((modifier, index) => {
-      const current = modifier.modifyScore!(currentContext)
-      const previous = modifier.modifyScore!(previousContext)
-      jokerPoints += current.score
+      const current = modifier.modifySettlementScore
+        ? modifier.modifySettlementScore(currentContext, previousContext)
+        : modifier.modifyScore!(currentContext)
+      const previous = modifier.modifySettlementScore
+        ? { score: 0 }
+        : modifier.modifyScore!(previousContext)
+      const baseDelta = modifier.modifySettlementScore ? current.score : current.score - previous.score
+      const multDelta = modifier.modifySettlementScore
+        ? current.multDelta ?? 0
+        : (current.multDelta ?? 0) - (previous.multDelta ?? 0)
+      const xMult = modifier.modifySettlementScore
+        ? current.xMult
+        : (current.xMult ?? 1) > (previous.xMult ?? 1) ? current.xMult : undefined
+      jokerPoints += modifier.modifySettlementScore ? baseDelta : current.score
       jokerMultiplier += current.multDelta ?? 0
       jokerFinalMultiplier *= current.xMult ?? 1
-      const baseDelta = current.score - previous.score
-      const multDelta = (current.multDelta ?? 0) - (previous.multDelta ?? 0)
-      if (baseDelta > 0 || multDelta > 0 || (current.xMult ?? 1) > (previous.xMult ?? 1)) {
+      if (baseDelta > 0 || multDelta > 0 || xMult) {
         events.push({
           id: `joker-${modifier.id}-${index}`,
           sourceType: 'joker',
@@ -99,7 +110,7 @@ export function calculateBalatroScore(input: CalculateScoreInput): BalatroScoreR
           label: modifier.name,
           baseDelta: baseDelta > 0 ? baseDelta : undefined,
           multDelta: multDelta > 0 ? multDelta : undefined,
-          xMult: (current.xMult ?? 1) > (previous.xMult ?? 1) ? current.xMult : undefined,
+          xMult,
           emphasis: 'strong',
         })
       }

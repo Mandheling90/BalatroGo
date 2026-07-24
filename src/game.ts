@@ -44,6 +44,8 @@ export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[], ruleB
   ]
   const modifierResult = applyScoreModifiers(ownedCharmIds, {
     cards,
+    yakuScore: evaluation.totalScore,
+    completedPatternIds: evaluation.completedPatterns.map((pattern) => pattern.id),
     counts: {
       gwang: evaluation.counts.gwang,
       ribbon: evaluation.counts.ribbon,

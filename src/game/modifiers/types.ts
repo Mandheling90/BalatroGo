@@ -12,6 +12,8 @@ export interface Charm {
 export interface ScoreModifierContext {
   cards: HwatuCard[]
   counts: { gwang: number; ribbon: number; junk: number; bird: number; completedMonths: number }
+  yakuScore: number
+  completedPatternIds: string[]
 }
 
 export interface ScoreModifierResult {
@@ -24,4 +26,5 @@ export interface ScoreModifierResult {
 export interface RuleModifier extends Charm {
   priority: number
   modifyScore?: (context: ScoreModifierContext) => ScoreModifierResult
+  modifySettlementScore?: (current: ScoreModifierContext, previous: ScoreModifierContext) => ScoreModifierResult
 }

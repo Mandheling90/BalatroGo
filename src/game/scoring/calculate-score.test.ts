@@ -80,4 +80,84 @@ describe('Balatro-style score calculation', () => {
     expect(result.multiplier).toBe(4)
     expect(getSettlementScore(result)).toEqual({ basePoints: 10, score: 40 })
   })
+
+  it('새 화점 부적은 족보 점수가 아니라 이번 턴 기본 화점만 올린다', () => {
+    const cards = Array.from({ length: 4 }, (_, index) => card(`month-one-pi-${index}`, 'pi', 1))
+    const result = calculateBalatroScore({
+      cards,
+      previousCards: [],
+      ownedCharmIds: ['flower-shoes', 'pi-pouch', 'sweep-fan', 'moon-mirror'],
+    })
+
+    expect(result.yakuMultiplier).toBe(0)
+    expect(result.events.filter((event) => event.sourceType === 'joker').map((event) => event.baseDelta)).toEqual([5, 12, 25, 30])
+    expect(getSettlementScore(result)).toEqual({ basePoints: 92, score: 92 })
+  })
+
+  it('광채석은 이번 턴 새로 획득한 광에만 15 화점을 더한다', () => {
+    const previousCards = [card('jan-gwang', 'gwang', 1)]
+    const result = calculateBalatroScore({
+      cards: [...previousCards, card('mar-gwang', 'gwang', 3)],
+      previousCards,
+      ownedCharmIds: ['bright-stone'],
+    })
+
+    expect(result.events.find((event) => event.sourceId === 'bright-stone')).toMatchObject({ baseDelta: 15 })
+    expect(getSettlementScore(result).basePoints).toBe(45)
+  })
+
+  it('쌍화전은 보너스 피를 제외한 일반패를 정확히 2장 획득했을 때 발동한다', () => {
+    const pair = [card('jan-pi-1', 'pi', 1), card('jan-pi-2', 'pi', 1)]
+    const bonusPi = card('bonus-pi', 'pi', -1)
+    const result = calculateBalatroScore({
+      cards: [...pair, bonusPi],
+      previousCards: [],
+      ownedCharmIds: ['twin-flowers'],
+    })
+
+    expect(result.events.find((event) => event.sourceId === 'twin-flowers')).toMatchObject({ baseDelta: 15 })
+    expect(getSettlementScore(result).basePoints).toBe(30)
+  })
+
+  it('쌍화전은 일반패를 4장 획득하면 발동하지 않는다', () => {
+    const result = calculateBalatroScore({
+      cards: Array.from({ length: 4 }, (_, index) => card(`jan-pi-${index}`, 'pi', 1)),
+      previousCards: [],
+      ownedCharmIds: ['twin-flowers'],
+    })
+
+    expect(result.events.some((event) => event.sourceId === 'twin-flowers')).toBe(false)
+    expect(getSettlementScore(result).basePoints).toBe(20)
+  })
+
+  it('족보 강화 부적은 족보 총점을 바꾸지 않고 일반 배수만 강화한다', () => {
+    const previousCards = [
+      card('jan-red-ribbon', 'ribbon-red', 1),
+      card('feb-red-ribbon', 'ribbon-red', 2),
+    ]
+    const result = calculateBalatroScore({
+      cards: [...previousCards, card('mar-red-ribbon', 'ribbon-red', 3)],
+      previousCards,
+      ownedCharmIds: ['yaku-scroll', 'three-ribbon-seal', 'yaku-bell'],
+    })
+
+    expect(result.yakuMultiplier).toBe(3)
+    expect(result.jokerMultiplier).toBe(5)
+    expect(result.multiplier).toBe(9)
+    expect(result.events.filter((event) => event.sourceType === 'joker').map((event) => event.multDelta)).toEqual([1, 2, 2])
+    expect(getSettlementScore(result)).toEqual({ basePoints: 10, score: 90 })
+  })
+
+  it('신명 방울은 화점만 증가하고 족보 총점이 그대로면 발동하지 않는다', () => {
+    const previousCards = [card('jan-pi', 'pi', 1)]
+    const result = calculateBalatroScore({
+      cards: [...previousCards, card('feb-pi', 'pi', 2)],
+      previousCards,
+      ownedCharmIds: ['yaku-bell'],
+    })
+
+    expect(result.yakuMultiplier).toBe(0)
+    expect(result.jokerMultiplier).toBe(0)
+    expect(result.events.some((event) => event.sourceId === 'yaku-bell')).toBe(false)
+  })
 })

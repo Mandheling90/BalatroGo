@@ -3,6 +3,8 @@ import { applyScoreModifiers } from './apply-score-modifiers'
 
 const context = {
   cards: [],
+  yakuScore: 0,
+  completedPatternIds: [],
   counts: { gwang: 2, ribbon: 3, junk: 7, bird: 0, completedMonths: 0 },
 }
 
