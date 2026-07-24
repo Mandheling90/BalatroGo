@@ -509,6 +509,17 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .score-popup-multiplier i { font-size: 16px; font-style: normal; }
 .score-popup-multiplier strong { color: #ff8c8c; background: none; font-size: 25px; }
 .score-popup-multiplier small { color: #f6cd65; font-size: 11px; white-space: nowrap; }
+.score-popup-multiplier .score-go-multiplier {
+  color: #ffd85e;
+  font-size: 10px;
+  font-weight: 900;
+  text-shadow: 0 0 12px rgba(255, 216, 94, .72);
+  animation: goMultiplierHit .52s cubic-bezier(.12, 1.7, .28, 1) both;
+}
+.score-popup-multiplier.is-go-active {
+  border-left-color: rgba(255, 216, 94, .72);
+  box-shadow: inset 12px 0 24px rgba(255, 216, 94, .08);
+}
 .score-popup-multiplier .score-mult-reason {
   max-width: 110px;
   color: #ffb0a8;
@@ -644,6 +655,11 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 @keyframes scoreReasonIn {
   from { opacity: 0; transform: translateY(7px) scale(.82); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes goMultiplierHit {
+  from { opacity: 0; transform: translateY(8px) scale(.7); filter: brightness(1.8); }
+  58% { transform: translateY(-2px) scale(1.18); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); }
 }
 .capture-impact { position: absolute; left: var(--impact-x, 50%); top: var(--impact-y, 50%); z-index: 28; width: 90px; height: 90px; display: grid; place-items: center; transform: translate(-50%, -50%); pointer-events: none; }
 .capture-impact i { position: absolute; inset: 0; border: 3px solid #f0c45a; border-radius: 50%; animation: impactRing .4s 1.16s ease-out both; }

@@ -86,24 +86,48 @@ describe('뻑 이후 진행', () => {
     expect(result.captured.filter((card) => card.month === 1)).toHaveLength(0)
   })
 
-  it('목표 화점을 달성하면 고스톱 선택 없이 블라인드를 종료한다', () => {
+  it('목표 화점을 달성하고 다음 턴이 남으면 정산 후 고 선택을 기다린다', () => {
     const monthCards = createDeck().filter((card) => card.month === 1)
     const reveal = createDeck().find((card) => card.month === 2)!
+    const nextReveal = createDeck().find((card) => card.month === 3)!
     const state = {
       ...createNewGame(),
       phase: 'playing' as const,
       target: 10,
       hand: [monthCards[1]],
-      deck: [reveal],
+      deck: [reveal, nextReveal],
       table: [monthCards[0]],
       captured: [],
       selected: monthCards[1].id,
     }
 
     const result = resolveGameTurn(state)
-    expect(result.pendingPhase).toBe('shop')
-    expect(result.blindHistory[0]).toBe('cleared')
+    expect(result.pendingPhase).toBeNull()
+    expect(result.blindHistory[0]).toBe('pending')
+    expect(result.awaitingGoStop).toBe(true)
+  })
+
+  it('고를 선택한 다음 턴에 요구 고스톱 점수를 내지 못하면 게임오버가 된다', () => {
+    const deck = createDeck()
+    const state = {
+      ...createNewGame(),
+      phase: 'playing' as const,
+      target: 1,
+      scoreTotal: 10,
+      goCount: 1,
+      goRequiredScore: 99,
+      hand: [deck[0]],
+      deck: [deck[4]],
+      table: [],
+      captured: [],
+      selected: deck[0].id,
+    }
+
+    const result = resolveGameTurn(state)
+
+    expect(result.pendingPhase).toBe('gameover')
     expect(result.awaitingGoStop).toBe(false)
+    expect(result.gameOverReason).toContain('고를 선택했지만')
   })
 
   it('쪽에 성공하면 두 장을 획득하고 보너스 피 한 장을 지급한다', () => {

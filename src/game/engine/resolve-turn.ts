@@ -1,3 +1,4 @@
+import { scoreCaptured } from '../../game'
 import { createBonusPi } from '../core/cards/bonus'
 import { HwatuCard } from '../core/cards/types'
 import { matchPlayedCard } from '../core/rules/matching'
@@ -73,8 +74,13 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
   const settlement = getSettlementScore(turnScore)
   const scoreTotal = current.scoreTotal + settlement.score
   const reachedTarget = scoreTotal >= current.target
+  const nextGoStopScore = scoreCaptured(captured, current.ownedCharms, nextRuleBonus, nextRuleDetails, current.goCount).goScore
+  const failedGo = current.goCount > 0 && nextGoStopScore < current.goRequiredScore
+  const reachedGoRequirement = nextGoStopScore >= current.goRequiredScore
   const nextTurnsUsed = current.turnsUsed + 1
-  const failed = !reachedTarget && nextTurnsUsed >= 10
+  const failed = failedGo || (!reachedTarget && nextTurnsUsed >= 10)
+  const reachedGoChoice = !failed && reachedTarget && (current.goCount === 0 || reachedGoRequirement)
+  const canContinueGo = nextTurnsUsed < 10 && (remainingHand.length > 0 || current.deck.length > 1)
   const resultMessages: string[] = []
   if (isPeok) resultMessages.push(`${played.month}월 뻑! 세 장이 바닥에 묶였습니다.`)
   else if (isBomb) resultMessages.push(`${played.month}월 폭탄! 손패 세 장과 바닥패를 한꺼번에 가져왔습니다.`)
@@ -100,9 +106,11 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     selected: null,
     phase: 'playing',
     pendingPhase: failed ? 'gameover' : null,
-    gameOverReason: failed ? `10턴을 모두 사용했지만 목표 화점 ${current.target}점을 달성하지 못했습니다.` : null,
-    awaitingGoStop: false,
-    message: failed ? `마지막 턴이 끝났습니다. ${capturedCopy}` : capturedCopy,
+    gameOverReason: failedGo
+      ? `고를 선택했지만 고스톱 점수 ${current.goRequiredScore}점을 만들지 못했습니다.`
+      : failed ? `10턴을 모두 사용했지만 목표 화점 ${current.target}점을 달성하지 못했습니다.` : null,
+    awaitingGoStop: reachedGoChoice && canContinueGo,
+    message: failedGo ? `고 실패! ${capturedCopy}` : failed ? `마지막 턴이 끝났습니다. ${capturedCopy}` : capturedCopy,
     lastRevealed: revealed.map((card) => card.id),
     lastCapturedMonths: Array.from(new Set([...(playerMatch.matched ? [played.month] : []), ...(deckMatch.matched && firstRevealed ? [firstRevealed.month] : [])])),
     lastPlayedId: playerMatch.matched ? null : played.id,
@@ -120,5 +128,5 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     lastTurnBasePoints: settlement.basePoints,
     lastTurnScore: settlement.score,
   }
-  return reachedTarget ? prepareBlindClear(result) : result
+  return reachedGoChoice && !canContinueGo ? prepareBlindClear(result) : result
 }

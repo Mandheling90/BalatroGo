@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CardKind, charms, HwatuCard, scoreCaptured } from './game'
 import { evaluatePatterns } from './scoring'
 import { Card } from './components/game/HwatuCard'
-import { MatchChoiceModal, RulesModal } from './components/game/GameModals'
+import { GoStopModal, MatchChoiceModal, RulesModal } from './components/game/GameModals'
 import { blindDefinitions, getBlind } from './game/data/blinds'
 import { getFloorPosition } from './game/engine/floor-layout'
 import { getDeckMatchCandidates, resolveGameTurn } from './game/engine/resolve-turn'
 import { resolveDeckTurn } from './game/engine/resolve-deck-turn'
 import { createNewGame, dealRound } from './game/engine/setup'
 import { buyShopCharm, leaveShop, rerollShop } from './game/engine/shop'
+import { canChooseGo, chooseGo } from './game/engine/go-stop'
 import type { BlindIndex, GameState } from './game/engine/types'
 import { scorePlaybackConfig } from './game/scoring/score-config'
 import type { ScoreEvent } from './game/scoring/types'
@@ -42,6 +43,7 @@ function App() {
   const [isResolving, setIsResolving] = useState(false)
   const [isScorePlaying, setIsScorePlaying] = useState(false)
   const [isMultiplying, setIsMultiplying] = useState(false)
+  const [isGoMultiplying, setIsGoMultiplying] = useState(false)
   const [scoredCardCount, setScoredCardCount] = useState(0)
   const [capturePlayback, setCapturePlayback] = useState<{ turnKey: string; pendingIds: string[] }>({
     turnKey: '',
@@ -118,14 +120,14 @@ function App() {
   }, [game.lastPlayedId, game.lastCapturedIds])
 
   useEffect(() => {
-    if (!game.pendingPhase || isSettlementPending) return
+    if (!game.pendingPhase || isSettlementPending || isResolving) return
     const timer = window.setTimeout(() => {
       setGame((current) => current.pendingPhase
         ? { ...current, phase: current.pendingPhase, pendingPhase: null }
         : current)
     }, 350)
     return () => window.clearTimeout(timer)
-  }, [game.pendingPhase, isSettlementPending])
+  }, [game.pendingPhase, isResolving, isSettlementPending])
 
   useEffect(() => {
     setCapturePlayback({
@@ -139,6 +141,7 @@ function App() {
     if (!events.length) {
       setIsScorePlaying(false)
       setIsMultiplying(false)
+      setIsGoMultiplying(false)
       setDisplayScore({ base: game.lastTurnBasePoints, mult: score.multiplier, xMult: score.finalMultiplier, total: game.scoreTotal })
       return
     }
@@ -154,6 +157,7 @@ function App() {
       xMult: hasGoEvent ? score.finalMultiplier / goRatio : score.finalMultiplier,
     }
     const startingTotal = game.scoreTotal - game.lastTurnScore
+    const hasGoMultiplier = score.finalMultiplier > 1
     setDisplayScore({ ...staged, total: startingTotal })
     setActiveScoreEvent(null)
     setScoredCardCount(0)
@@ -181,6 +185,12 @@ function App() {
     }, elapsed + scorePlaybackConfig.strongDelayMs))
     timers.push(window.setTimeout(() => {
       setIsMultiplying(false)
+      if (hasGoMultiplier) setIsGoMultiplying(true)
+    }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.multiplyDelayMs))
+    const finalMultiplyDelay = scorePlaybackConfig.multiplyDelayMs
+      + (hasGoMultiplier ? scorePlaybackConfig.goMultiplyDelayMs : 0)
+    timers.push(window.setTimeout(() => {
+      setIsGoMultiplying(false)
       const startedAt = performance.now()
       const tick = (now: number) => {
         const progress = Math.min(1, (now - startedAt) / scorePlaybackConfig.countUpMs)
@@ -194,7 +204,7 @@ function App() {
         }
       }
       timers.push(window.requestAnimationFrame(tick))
-    }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.multiplyDelayMs))
+    }, elapsed + scorePlaybackConfig.strongDelayMs + finalMultiplyDelay))
     timers.push(window.setTimeout(() => {
       setActiveScoreEvent(null)
       setDisplayScore({
@@ -205,9 +215,10 @@ function App() {
       })
       setIsScorePlaying(false)
       setIsMultiplying(false)
+      setIsGoMultiplying(false)
       setIsResolving(false)
       setCompletedSettlementKey(scoreTurnKey)
-    }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.multiplyDelayMs + scorePlaybackConfig.countUpMs + 120))
+    }, elapsed + scorePlaybackConfig.strongDelayMs + finalMultiplyDelay + scorePlaybackConfig.countUpMs + 120))
     return () => {
       timers.forEach((timer) => {
         window.clearTimeout(timer)
@@ -215,6 +226,7 @@ function App() {
       })
       setIsScorePlaying(false)
       setIsMultiplying(false)
+      setIsGoMultiplying(false)
     }
   }, [capturePlayback, game.goCount, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnScore, game.scoreTotal, score.finalMultiplier, score.multiplier, scoreTurnKey])
 
@@ -347,7 +359,7 @@ function App() {
         shakenMonths: [],
         awaitingGoStop: false,
         goCount: 0,
-        goRequiredScore: blind.target,
+        goRequiredScore: 3,
         lastScoreEvents: [],
         lastRuleEffect: null,
         turnsUsed: 0,
@@ -383,6 +395,7 @@ function App() {
   const rerollCharms = () => setGame(rerollShop)
 
   const exitShop = () => setGame(leaveShop)
+  const continueGo = () => setGame(chooseGo)
 
   const capturedGroups = [
     { key: 'gwang' as const, label: '광', score: score.gwang, patterns: patternLabels(['three-brights', 'rain-three-brights', 'four-brights', 'five-brights']) },
@@ -398,7 +411,7 @@ function App() {
         <strong>가로로 돌려주세요</strong>
         <span>화투록은 가로 화면에 맞춰져 있습니다.</span>
       </div>
-      {(activeScoreEvent || isMultiplying) && scoringCardEvents.length > 0 && (
+      {(activeScoreEvent || isMultiplying || isGoMultiplying) && scoringCardEvents.length > 0 && (
         <div className="score-card-popup" role="status" aria-label="획득 화점 및 배수 정산">
           <span className="score-card-popup-title">획득 화점</span>
           <div className="score-card-popup-row">
@@ -416,7 +429,7 @@ function App() {
                 )
               })}
             </div>
-            <div className={`score-popup-multiplier ${activeScoreEvent?.multDelta || isMultiplying ? 'is-active' : ''}`}>
+            <div className={`score-popup-multiplier ${activeScoreEvent?.multDelta || isMultiplying || isGoMultiplying ? 'is-active' : ''} ${isGoMultiplying ? 'is-go-active' : ''}`}>
               <i>×</i>
               <strong key={activeScoreEvent?.multDelta ? activeScoreEvent.id : isMultiplying ? 'multiply' : 'multiplier'}>
                 {displayScore.mult}
@@ -425,7 +438,11 @@ function App() {
                 ? <small className="score-mult-reason" key={`reason-${activeScoreEvent.id}`}>
                     {activeScoreEvent.label} · 배수 +{activeScoreEvent.multDelta}
                   </small>
-                : isMultiplying && <small>= {game.lastTurnScore}</small>}
+                : isMultiplying
+                  ? <small>= {game.lastTurnBasePoints * displayScore.mult}</small>
+                  : isGoMultiplying && <small className="score-go-multiplier">
+                      {game.goCount}고 ×{displayScore.xMult} · = {game.lastTurnScore}
+                    </small>}
             </div>
           </div>
         </div>
@@ -726,6 +743,14 @@ function App() {
       )}
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+
+      {game.awaitingGoStop && canChooseGo(game) && !isSettlementPending && (
+        <GoStopModal
+          score={score.goScore}
+          goCount={game.goCount}
+          onGo={continueGo}
+        />
+      )}
 
       {selectedCharm && <div className="overlay charm-detail-overlay" onClick={() => setSelectedCharmId(null)}><section className="charm-detail-modal" onClick={(event) => event.stopPropagation()} style={{ '--accent': selectedCharm.accent } as React.CSSProperties}>
         <button className="close" type="button" aria-label="부적 설명 닫기" onClick={() => setSelectedCharmId(null)}>×</button>

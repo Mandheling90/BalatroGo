@@ -56,9 +56,9 @@ describe('Balatro-style score calculation', () => {
     const result = calculateBalatroScore({ cards, goCount: 2, previousGoCount: 1 })
     expect(result.basePoints).toBe(30)
     expect(result.multiplier).toBe(4)
-    expect(result.finalMultiplier).toBe(3)
-    expect(result.total).toBe(360)
-    expect(result.events.at(-1)).toMatchObject({ sourceType: 'go', xMult: 3 })
+    expect(result.finalMultiplier).toBe(2)
+    expect(result.total).toBe(240)
+    expect(result.events.at(-1)).toMatchObject({ sourceType: 'go', xMult: 2 })
   })
 
   it('applies a completed yaku multiplier only to points earned in this settlement', () => {

@@ -14,7 +14,8 @@ export const scorePlaybackConfig = {
   eventDelayMs: 450,
   strongDelayMs: 620,
   multiplyDelayMs: 700,
+  goMultiplyDelayMs: 700,
   countUpMs: 950,
 } as const
 
-export const getGoFinalMultiplier = (goCount: number) => Math.max(1, goCount + 1)
+export const getGoFinalMultiplier = (goCount: number) => Math.max(1, goCount)
