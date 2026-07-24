@@ -79,6 +79,7 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     ruleBonus: nextRuleBonus,
     previousRuleBonus: current.ruleBonus,
     goCount: goSucceeded ? current.goCount : 0,
+    previousGoCount: 0,
   })
   const settlement = getSettlementScore(turnScore)
   const settledScore = goFailed ? 0 : settlement.score

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CardKind, HwatuCard } from '../core/cards/types'
 import { calculateBalatroScore, getCardPoints, getSettlementScore } from './calculate-score'
-import { getGoFinalMultiplier } from './score-config'
+import { getGoAdditiveMultiplier, getGoFinalMultiplier } from './score-config'
 
 const card = (definitionId: string, kind: CardKind, month = 1, piValue?: number): HwatuCard => ({
   id: `instance-${definitionId}`,
@@ -48,22 +48,35 @@ describe('Balatro-style score calculation', () => {
     expect(result.events.at(-1)).toMatchObject({ sourceId: 'hongdan', multDelta: 3 })
   })
 
-  it('applies the separated base, additive, and final multipliers', () => {
+  it.each([
+    { goCount: 1, multiplier: 5, finalMultiplier: 1, total: 150, multDelta: 1, xMult: undefined },
+    { goCount: 2, multiplier: 6, finalMultiplier: 1, total: 180, multDelta: 2, xMult: undefined },
+    { goCount: 3, multiplier: 4, finalMultiplier: 2, total: 240, multDelta: undefined, xMult: 2 },
+    { goCount: 4, multiplier: 4, finalMultiplier: 3, total: 360, multDelta: undefined, xMult: 3 },
+  ])('$goCount고 효과를 정산 단계에 맞게 적용한다', ({
+    goCount,
+    multiplier,
+    finalMultiplier,
+    total,
+    multDelta,
+    xMult,
+  }) => {
     const cards = [
       card('jan-red-ribbon', 'ribbon-red', 1),
       card('feb-red-ribbon', 'ribbon-red', 2),
       card('mar-red-ribbon', 'ribbon-red', 3),
     ]
-    const result = calculateBalatroScore({ cards, goCount: 2, previousGoCount: 1 })
+    const result = calculateBalatroScore({ cards, goCount, previousGoCount: 0 })
     expect(result.basePoints).toBe(30)
-    expect(result.multiplier).toBe(4)
-    expect(result.finalMultiplier).toBe(4)
-    expect(result.total).toBe(480)
-    expect(result.events.at(-1)).toMatchObject({ sourceType: 'go', xMult: 4 })
+    expect(result.multiplier).toBe(multiplier)
+    expect(result.finalMultiplier).toBe(finalMultiplier)
+    expect(result.total).toBe(total)
+    expect(result.events.at(-1)).toMatchObject({ sourceType: 'go', multDelta, xMult })
   })
 
-  it('고 배수를 설정 데이터에서 1, 2, 4, 8 순서로 가져온다', () => {
-    expect([0, 1, 2, 3].map(getGoFinalMultiplier)).toEqual([1, 2, 4, 8])
+  it('1·2고는 가산 배수, 3고 이상은 최종 배수 설정을 가져온다', () => {
+    expect([0, 1, 2, 3, 4, 5].map(getGoAdditiveMultiplier)).toEqual([0, 1, 2, 0, 0, 0])
+    expect([0, 1, 2, 3, 4, 5].map(getGoFinalMultiplier)).toEqual([1, 1, 1, 2, 3, 4])
   })
 
   it('applies a completed yaku multiplier only to points earned in this settlement', () => {

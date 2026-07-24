@@ -1,5 +1,5 @@
 import type { HwatuCard } from '../../game/core/cards/types'
-import { getGoFinalMultiplier } from '../../game/scoring/score-config'
+import { getGoAdditiveMultiplier, getGoFinalMultiplier } from '../../game/scoring/score-config'
 import { Card } from './HwatuCard'
 
 export function GoStopModal({ score, goCount, onGo, onStop }: {
@@ -8,13 +8,19 @@ export function GoStopModal({ score, goCount, onGo, onStop }: {
   onGo: () => void
   onStop: () => void
 }) {
+  const nextGoCount = goCount + 1
+  const goAdditiveMultiplier = getGoAdditiveMultiplier(nextGoCount)
+  const goEffectLabel = goAdditiveMultiplier > 0
+    ? `족보 배수 +${goAdditiveMultiplier}`
+    : `최종 화점 ×${getGoFinalMultiplier(nextGoCount)}`
+
   return <div className="overlay go-stop-overlay"><section className="go-stop-modal">
     <span className="eyebrow">족보 점수 진전</span>
     <h2>고 · 스톱</h2>
     <p>현재 족보 {score}점 · {goCount}고</p>
     <div className="go-risk-warning"><strong>주의</strong> 고를 선택한 뒤 족보 총점이 오르지 않은 채 판을 더 진행할 수 없으면, 그 턴의 화점은 0점 처리됩니다.</div>
     <div className="go-stop-actions">
-      <button className="go-button" onClick={onGo}>고<span>{goCount + 1}고 · 성공 정산 ×{getGoFinalMultiplier(goCount + 1)} · 족보 진전 필요</span></button>
+      <button className="go-button" onClick={onGo}>고<span>{nextGoCount}고 · 성공 정산 {goEffectLabel} · 족보 진전 필요</span></button>
       <button className="stop-button" onClick={onStop}>스톱<span>0고 · ×1 상태로 다음 턴</span></button>
     </div>
   </section></div>

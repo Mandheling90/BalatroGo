@@ -18,7 +18,10 @@ export const scorePlaybackConfig = {
   countUpMs: 950,
 } as const
 
-export const goMultiplierConfig = [1, 2, 4, 8] as const
+export const goAdditiveMultiplierConfig = [0, 1, 2] as const
+
+export const getGoAdditiveMultiplier = (goCount: number) =>
+  goAdditiveMultiplierConfig[goCount] ?? 0
 
 export const getGoFinalMultiplier = (goCount: number) =>
-  goMultiplierConfig[goCount] ?? 2 ** goCount
+  goCount < 3 ? 1 : goCount - 1

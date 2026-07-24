@@ -2,7 +2,7 @@ import { evaluatePatterns } from '../../scoring'
 import type { HwatuCard } from '../core/cards/types'
 import { charmModifiers } from '../modifiers/charms'
 import type { ScoreModifierContext } from '../modifiers/types'
-import { cardPointConfig, getGoFinalMultiplier } from './score-config'
+import { cardPointConfig, getGoAdditiveMultiplier, getGoFinalMultiplier } from './score-config'
 import type { BalatroScoreResult, ScoreEvent } from './types'
 
 export interface CalculateScoreInput {
@@ -150,21 +150,27 @@ export function calculateBalatroScore(input: CalculateScoreInput): BalatroScoreR
 
   const goCount = input.goCount ?? 0
   const previousGoCount = input.previousGoCount ?? goCount
+  const goAdditiveMultiplier = getGoAdditiveMultiplier(goCount)
+  const previousGoAdditiveMultiplier = getGoAdditiveMultiplier(previousGoCount)
   const finalMultiplier = getGoFinalMultiplier(goCount) * jokerFinalMultiplier
+  const previousFinalMultiplier = getGoFinalMultiplier(previousGoCount) * jokerFinalMultiplier
   if (goCount > previousGoCount) {
     events.push({
       id: `go-${goCount}`,
       sourceType: 'go',
       sourceId: `${goCount}-go`,
       label: `${goCount}고`,
-      xMult: finalMultiplier,
+      multDelta: goAdditiveMultiplier > previousGoAdditiveMultiplier
+        ? goAdditiveMultiplier - previousGoAdditiveMultiplier
+        : undefined,
+      xMult: finalMultiplier > previousFinalMultiplier ? finalMultiplier : undefined,
       emphasis: 'critical',
     })
   }
 
   const cardPoints = cards.reduce((sum, card) => sum + getCardPoints(card), 0)
   const yakuMultiplier = evaluatePatterns(cards).totalScore
-  const multiplier = 1 + yakuMultiplier + jokerMultiplier + ruleBonus
+  const multiplier = 1 + yakuMultiplier + jokerMultiplier + ruleBonus + goAdditiveMultiplier
   const basePoints = cardPoints + jokerPoints
   return {
     cardPoints,

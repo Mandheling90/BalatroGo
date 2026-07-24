@@ -39,6 +39,7 @@ export function resolveDeckTurn(current: GameState): GameState {
     ownedCharmIds: current.ownedCharms,
     ruleBonus: current.ruleBonus,
     goCount: goSucceeded ? current.goCount : 0,
+    previousGoCount: 0,
   })
   const settlement = getSettlementScore(turnScore)
   const settledScore = goFailed ? 0 : settlement.score

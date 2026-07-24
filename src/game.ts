@@ -58,7 +58,7 @@ export function scoreCaptured(cards: HwatuCard[], ownedCharmIds: string[], ruleB
   })
   const bonus = modifierResult.score + ruleBonus
   const goScore = evaluation.totalScore
-  const balatroScore = calculateBalatroScore({ cards, previousCards: cards, ownedCharmIds, ruleBonus, goCount })
+  const balatroScore = calculateBalatroScore({ cards, previousCards: cards, ownedCharmIds, ruleBonus, goCount: 0 })
   return {
     gwang,
     animal,
