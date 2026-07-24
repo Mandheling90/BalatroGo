@@ -86,7 +86,7 @@ describe('뻑 이후 진행', () => {
     expect(result.captured.filter((card) => card.month === 1)).toHaveLength(0)
   })
 
-  it('목표 화점을 달성하고 다음 턴이 남으면 정산 후 고 선택을 기다린다', () => {
+  it('목표 화점을 달성하면 고 선택 없이 블라인드를 클리어한다', () => {
     const monthCards = createDeck().filter((card) => card.month === 1)
     const reveal = createDeck().find((card) => card.month === 2)!
     const nextReveal = createDeck().find((card) => card.month === 3)!
@@ -102,8 +102,33 @@ describe('뻑 이후 진행', () => {
     }
 
     const result = resolveGameTurn(state)
+    expect(result.pendingPhase).toBe('shop')
+    expect(result.blindHistory[0]).toBe('cleared')
+    expect(result.awaitingGoStop).toBe(false)
+  })
+
+  it('목표 화점 미달이어도 고스톱 요구 점수를 달성하면 고 선택을 기다린다', () => {
+    const deck = createDeck()
+    const januaryRibbon = deck.find((card) => card.definitionId === 'jan-red-ribbon')!
+    const februaryRibbon = deck.find((card) => card.definitionId === 'feb-red-ribbon')!
+    const marchRibbon = deck.find((card) => card.definitionId === 'mar-red-ribbon')!
+    const marchMatch = deck.find((card) => card.month === 3 && card.id !== marchRibbon.id)!
+    const reveal = deck.find((card) => card.month === 4)!
+    const state = {
+      ...createNewGame(),
+      phase: 'playing' as const,
+      target: 9999,
+      goRequiredScore: 3,
+      hand: [marchRibbon],
+      deck: [reveal, deck.find((card) => card.month === 5)!],
+      table: [marchMatch],
+      captured: [januaryRibbon, februaryRibbon],
+      selected: marchRibbon.id,
+    }
+
+    const result = resolveGameTurn(state)
+
     expect(result.pendingPhase).toBeNull()
-    expect(result.blindHistory[0]).toBe('pending')
     expect(result.awaitingGoStop).toBe(true)
   })
 

@@ -32,10 +32,8 @@ export function resolveDeckTurn(current: GameState): GameState {
   const scoreTotal = current.scoreTotal + settlement.score
   const reachedTarget = scoreTotal >= current.target
   const nextGoStopScore = scoreCaptured(captured, current.ownedCharms, current.ruleBonus, current.ruleDetails, current.goCount).goScore
-  const failedGo = current.goCount > 0 && nextGoStopScore < current.goRequiredScore
-  const reachedGoRequirement = nextGoStopScore >= current.goRequiredScore
-  const failed = failedGo || (!reachedTarget && nextTurnsUsed >= 10)
-  const reachedGoChoice = !failed && reachedTarget && (current.goCount === 0 || reachedGoRequirement)
+  const failed = current.goCount === 0 && !reachedTarget && nextTurnsUsed >= 10
+  const reachedGoChoice = !failed && current.goCount === 0 && !reachedTarget && nextGoStopScore >= current.goRequiredScore
   const remainingDeckCount = current.deck.length - revealed.length
   const canContinueGo = nextTurnsUsed < 10 && (current.hand.length > 0 || remainingDeckCount > 0)
   const placedLabel = revealed.map((card) => `${card.month}월`).join(' · ')
@@ -50,11 +48,9 @@ export function resolveDeckTurn(current: GameState): GameState {
     captured,
     selected: null,
     pendingPhase: failed ? 'gameover' : null,
-    gameOverReason: failedGo
-      ? `고를 선택했지만 고스톱 점수 ${current.goRequiredScore}점을 만들지 못했습니다.`
-      : failed ? `10턴을 모두 사용했지만 목표 화점 ${current.target}점을 달성하지 못했습니다.` : null,
+    gameOverReason: failed ? `10턴을 모두 사용했지만 목표 화점 ${current.target}점을 달성하지 못했습니다.` : null,
     awaitingGoStop: reachedGoChoice && canContinueGo,
-    message: failedGo ? `고 실패! 덱에서 ${placedLabel} 두 장을 펼쳤습니다.${captureLabel}` : `덱에서 ${placedLabel} 두 장을 펼쳤습니다.${captureLabel}`,
+    message: `덱에서 ${placedLabel} 두 장을 펼쳤습니다.${captureLabel}`,
     lastRevealed: revealed.map((card) => card.id),
     lastCapturedMonths: completedMonths,
     lastPlayedId: null,
@@ -69,5 +65,5 @@ export function resolveDeckTurn(current: GameState): GameState {
     lastTurnBasePoints: settlement.basePoints,
     lastTurnScore: settlement.score,
   }
-  return reachedGoChoice && !canContinueGo ? prepareBlindClear(result) : result
+  return !failed && reachedTarget ? prepareBlindClear(result) : result
 }

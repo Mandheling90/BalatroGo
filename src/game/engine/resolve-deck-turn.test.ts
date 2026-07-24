@@ -66,4 +66,29 @@ describe('중앙 덱 턴', () => {
     expect(cardTurn.lastTurnAction).toBe('card')
     expect(resolveDeckTurn(cardTurn).lastTurnAction).toBe('deck')
   })
+
+  it('고 이후 덱 펼치기는 고 실패 판정을 하지 않고 카드 제출 기회를 유지한다', () => {
+    const deck = createDeck()
+    const state = {
+      ...createNewGame(),
+      phase: 'playing' as const,
+      target: 999,
+      scoreTotal: 10,
+      goCount: 1,
+      goRequiredScore: 99,
+      hand: [deck[4]],
+      deck: deck.slice(0, 2),
+      table: [],
+      captured: [],
+      turnsUsed: 2,
+    }
+
+    const result = resolveDeckTurn(state)
+
+    expect(result.pendingPhase).toBeNull()
+    expect(result.gameOverReason).toBeNull()
+    expect(result.lastTurnAction).toBe('deck')
+    expect(result.goCount).toBe(1)
+    expect(result.hand).toHaveLength(1)
+  })
 })

@@ -37,7 +37,8 @@ function App() {
     playedId: string
     matchIds: string[]
     handMatchId?: string
-    ready?: boolean
+    stage?: 'hand' | 'deck' | 'ready'
+    hiddenFloorIds?: string[]
   } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
   const [isResolving, setIsResolving] = useState(false)
@@ -55,6 +56,7 @@ function App() {
   const [displayScore, setDisplayScore] = useState({ base: 0, mult: 1, xMult: 1, total: 0 })
   const queuedCardSelection = useRef<string | null>(null)
   const skipRevealedDealId = useRef<string | null>(null)
+  const skipSubmittedFlightId = useRef<string | null>(null)
   const score = useMemo(
     () => scoreCaptured(game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails, game.goCount),
     [game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails, game.goCount],
@@ -262,20 +264,37 @@ function App() {
     const deckCandidates = getDeckMatchCandidates(game, pickedMatchId)
     if (!pickedDeckMatchId && deckCandidates.length === 2 && game.deck[0]) {
       const revealedId = game.deck[0].id
+      const floor = document.querySelector<HTMLElement>('.floor-spread')
+      const selectedCard = document.querySelector<HTMLElement>('.player-hand .hwatu-card[aria-pressed="true"]')
+      const previewPlayed = game.hand.find((card) => card.id === game.selected)
+      const previewMatches = previewPlayed ? game.table.filter((card) => card.month === previewPlayed.month) : []
+      const previewSameMonthHand = previewPlayed ? game.hand.filter((card) => card.month === previewPlayed.month) : []
+      const previewBomb = previewSameMonthHand.length === 3 && previewMatches.length === 1
+      const hiddenFloorIds = previewBomb || previewMatches.length === 3
+        ? previewMatches.map((card) => card.id)
+        : previewMatches.length > 0
+          ? [(previewMatches.find((card) => card.id === pickedMatchId) ?? previewMatches[0]).id]
+          : []
+      if (floor && selectedCard && previewPlayed) {
+        const floorRect = floor.getBoundingClientRect()
+        const cardRect = selectedCard.getBoundingClientRect()
+        const previewTarget = getFloorPosition(previewPlayed.month - 1, 12)
+        setSubmitFlight({
+          fromX: cardRect.left + cardRect.width / 2,
+          fromY: cardRect.top + cardRect.height / 2,
+          toX: floorRect.left + floorRect.width * previewTarget.x / 100,
+          toY: floorRect.top + floorRect.height * previewTarget.y / 100,
+        })
+      }
       setIsResolving(true)
       setMatchChoice({
         source: 'deck',
         playedId: revealedId,
         matchIds: deckCandidates.map((card) => card.id),
         handMatchId: pickedMatchId,
-        ready: false,
+        stage: 'hand',
+        hiddenFloorIds,
       })
-      window.setTimeout(() => {
-        setMatchChoice((current) => current?.source === 'deck' && current.playedId === revealedId
-          ? { ...current, ready: true }
-          : current)
-        setIsResolving(false)
-      }, 1250)
       return
     }
     const floor = document.querySelector<HTMLElement>('.floor-spread')
@@ -405,7 +424,7 @@ function App() {
   ]
 
   return (
-    <main className={`game-shell capture-game ${isResolving ? 'is-resolving' : ''} ${isScorePlaying ? 'is-score-playing' : ''} ${activeScoreEvent?.emphasis === 'critical' || activeScoreEvent?.sourceType === 'yaku' ? 'score-shake' : ''}`}>
+    <main className={`game-shell capture-game ${isResolving ? 'is-resolving' : ''} ${isScorePlaying ? 'is-score-playing' : ''} ${matchChoice?.source === 'deck' ? 'is-deck-choice-sequence' : ''} ${activeScoreEvent?.emphasis === 'critical' || activeScoreEvent?.sourceType === 'yaku' ? 'score-shake' : ''}`}>
       <div className="rotate-device" aria-hidden="true">
         <div className="rotate-phone">↻</div>
         <strong>가로로 돌려주세요</strong>
@@ -575,12 +594,19 @@ function App() {
                 <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
                 <small className="deck-turn-hint">{game.lastTurnAction === 'deck' ? '카드를 내야 다시 사용 가능' : '턴을 소비해 카드 2장 놓기'}</small>
               </button>
-              {matchChoice?.source === 'deck' && (() => {
+              {matchChoice?.source === 'deck' && matchChoice.stage !== 'hand' && (() => {
                 const previewCard = game.deck.find((card) => card.id === matchChoice.playedId)
                 if (!previewCard) return null
                 const position = getFloorPosition(previewCard.month - 1, 12)
                 return <div
                   className="loose-card dealt-from-deck deck-choice-preview"
+                  onAnimationEnd={(event) => {
+                    if (event.currentTarget !== event.target || event.animationName !== 'dealFromDeck') return
+                    setMatchChoice((current) => current?.source === 'deck'
+                      ? { ...current, stage: 'ready' }
+                      : current)
+                    setIsResolving(false)
+                  }}
                   style={{
                     '--floor-x': `${position.x}%`,
                     '--floor-y': `${position.y}%`,
@@ -641,7 +667,7 @@ function App() {
               })}
               {floorGroups.map((group) => {
                 const position = getFloorPosition(group.month - 1, 12)
-                return group.cards.map((card, stackIndex) => (
+                return group.cards.filter((card) => !matchChoice?.hiddenFloorIds?.includes(card.id)).map((card, stackIndex) => (
                 <div
                   className={`loose-card ${isResolving && game.lastPlayedId === card.id ? 'submitted-floor-placeholder' : ''} ${game.lastRevealed.includes(card.id) && card.id !== skipRevealedDealId.current ? 'dealt-from-deck' : ''} ${group.cards.length > 1 ? 'same-month-stack' : ''} ${group.cards.length === 3 ? 'almost-set' : ''} ${selectedMonth === card.month ? 'can-capture' : ''}`}
                   key={card.id}
@@ -696,7 +722,28 @@ function App() {
           </section>
 
         </section>
-        {isResolving && game.lastMatchTarget && submittedAnimationCard && (
+        {matchChoice?.source === 'deck' && matchChoice.stage === 'hand' && game.selected && (() => {
+          const previewSubmittedCard = game.hand.find((card) => card.id === game.selected)
+          if (!previewSubmittedCard) return null
+          return <div
+            className="submitted-card-flight"
+            onAnimationEnd={(event) => {
+              if (event.currentTarget !== event.target || event.animationName !== 'submitToMatchedCard') return
+              setMatchChoice((current) => current?.source === 'deck'
+                ? { ...current, stage: 'deck' }
+                : current)
+            }}
+            style={{
+              '--submit-x': `${submitFlight.fromX}px`,
+              '--submit-y': `${submitFlight.fromY}px`,
+              '--match-x': `${submitFlight.toX}px`,
+              '--match-y': `${submitFlight.toY}px`,
+            } as React.CSSProperties}
+          >
+            <Card card={previewSubmittedCard} />
+          </div>
+        })()}
+        {isResolving && game.lastMatchTarget && submittedAnimationCard && submittedAnimationCard.id !== skipSubmittedFlightId.current && (
           <div
             className={`submitted-card-flight ${game.lastPlayedId ? '' : 'hold-for-capture'}`}
             style={{
@@ -760,14 +807,18 @@ function App() {
         <p>{selectedCharm.description}</p>
       </section></div>}
 
-      {matchChoice?.ready !== false && matchChoice && (() => {
+      {matchChoice && (matchChoice.source === 'hand' || matchChoice.stage === 'ready') && (() => {
         const played = [...game.hand, ...game.deck].find((card) => card.id === matchChoice.playedId)
         const candidates = [...game.table, ...game.hand].filter((card) => matchChoice.matchIds.includes(card.id))
         if (!played) return null
         const chooseMatch = (cardId: string) => {
           if (matchChoice.source === 'deck') {
             skipRevealedDealId.current = matchChoice.playedId
-            window.setTimeout(() => { skipRevealedDealId.current = null }, 2800)
+            if (game.selected) skipSubmittedFlightId.current = game.selected
+            window.setTimeout(() => {
+              skipRevealedDealId.current = null
+              skipSubmittedFlightId.current = null
+            }, 2800)
             resolveTurn(matchChoice.handMatchId, cardId)
           } else {
             resolveTurn(cardId)

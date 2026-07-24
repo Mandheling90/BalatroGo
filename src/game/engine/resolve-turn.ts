@@ -79,7 +79,7 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
   const reachedGoRequirement = nextGoStopScore >= current.goRequiredScore
   const nextTurnsUsed = current.turnsUsed + 1
   const failed = failedGo || (!reachedTarget && nextTurnsUsed >= 10)
-  const reachedGoChoice = !failed && reachedTarget && (current.goCount === 0 || reachedGoRequirement)
+  const reachedGoChoice = !failed && !reachedTarget && reachedGoRequirement
   const canContinueGo = nextTurnsUsed < 10 && (remainingHand.length > 0 || current.deck.length > 1)
   const resultMessages: string[] = []
   if (isPeok) resultMessages.push(`${played.month}월 뻑! 세 장이 바닥에 묶였습니다.`)
@@ -128,5 +128,5 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     lastTurnBasePoints: settlement.basePoints,
     lastTurnScore: settlement.score,
   }
-  return reachedGoChoice && !canContinueGo ? prepareBlindClear(result) : result
+  return !failed && reachedTarget ? prepareBlindClear(result) : result
 }

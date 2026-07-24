@@ -272,6 +272,10 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .player-hand .hwatu-card[aria-pressed='false']:hover { transform: translateY(0); }
 .player-hand .hwatu-card.selected,
 .player-hand .hwatu-card.selected:hover { transform: translateY(-18px); }
+.capture-game.is-deck-choice-sequence .player-hand .hwatu-card[aria-pressed='true'] {
+  opacity: 0;
+  pointer-events: none;
+}
 .play-turn { position: absolute; right: 19px; bottom: 20px; width: 170px; min-height: 56px; padding: 0 16px; border: 0; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 800; }
 .play-turn:disabled { opacity: .35; cursor: not-allowed; }
 .play-turn span { display: block; margin: 2px 0 0; padding: 0; border: 0; font-size: 8px; }
