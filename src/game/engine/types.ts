@@ -41,7 +41,7 @@ export interface GameState {
   goRequiredScore: number
   lastGoChoiceYakuScore: number
   lastScoreEvents: ScoreEvent[]
-  lastRuleEffect: 'peok' | 'jjok' | null
+  lastRuleEffect: 'peok' | 'jjok' | 'bomb' | null
   turnsUsed: number
   lastTurnAction: 'card' | 'deck' | null
   scoreTotal: number

@@ -668,6 +668,13 @@ function App() {
           <small>보너스 피 +1</small>
         </div>
       )}
+      {isResolving && game.lastRuleEffect === 'bomb' && (
+        <div className="bomb-effect" role="status" aria-label="폭탄 성공">
+          <i />
+          <strong>폭탄!</strong>
+          <small>보너스 피 +1</small>
+        </div>
+      )}
       {game.phase === 'blind' && <header className="topbar">
         <div className="brand">
           <span className="brand-mark">花</span>
@@ -736,11 +743,8 @@ function App() {
           <div className="goal-score">
             <strong>{displayScore.total} / {game.target}</strong>
           </div>
-          <div className="balatro-score-strip status-score-strip" aria-label="누적 화점과 현재 고">
-            <span className="chip-score"><i>누적 화점</i><b>{displayScore.total}</b></span>
-            <em>·</em>
-            <span className="xmult-score"><i>현재 고</i><b>{game.goCount}고</b></span>
-            <span className="mult-score"><i>현재 족보 배수</i><b>×{score.multiplier}</b></span>
+          <div className="go-mult-summary" aria-label={`현재 ${game.goCount}고, 족보 배수 ${score.multiplier}배`}>
+            <strong>{game.goCount}고</strong><em>·</em><span>족보 배수 ×{score.multiplier}</span>
           </div>
           <div className="progress-track"><div style={{ width: `${Math.min(100, game.scoreTotal / game.target * 100)}%` }} /></div>
           <div className="turn-info"><span>진행 턴{game.unlimitedTurns ? ' · 디버그' : ''}</span><strong>{game.unlimitedTurns ? `${turn} / ∞` : `${Math.min(turn, 10)} / 10`}</strong></div>
@@ -956,11 +960,7 @@ function App() {
           <aside className="status-rail panel shop-status-rail">
             <div className="round-label">ANTE {game.round} · SHOP</div>
             <div className="goal-score"><strong>0 / {game.target}</strong></div>
-            <div className="balatro-score-strip status-score-strip" aria-label="초기화된 상점 상태">
-              <span className="chip-score"><i>누적 화점</i><b>0</b></span>
-              <span className="xmult-score"><i>현재 고</i><b>0고</b></span>
-              <span className="mult-score"><i>현재 족보 배수</i><b>×1</b></span>
-            </div>
+            <div className="go-mult-summary" aria-label="현재 0고, 족보 배수 1배"><strong>0고</strong><em>·</em><span>족보 배수 ×1</span></div>
             <div className="progress-track"><div style={{ width: '0%' }} /></div>
             <div className="turn-info"><span>진행 턴</span><strong>0 / 10</strong></div>
             <section className="rail-won-pile shop-empty-won-pile">

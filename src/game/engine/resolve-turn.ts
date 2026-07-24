@@ -132,7 +132,7 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     ruleDetails: nextRuleDetails,
     shakenMonths: isShake ? [...current.shakenMonths, played.month] : current.shakenMonths,
     lastScoreEvents: goFailed ? [] : turnScore.events,
-    lastRuleEffect: isPeok ? 'peok' : isJjok ? 'jjok' : null,
+    lastRuleEffect: isBomb ? 'bomb' : isPeok ? 'peok' : isJjok ? 'jjok' : null,
     turnsUsed: nextTurnsUsed,
     lastTurnAction: 'card',
     scoreTotal,
