@@ -8,7 +8,7 @@ import { getFloorPosition } from './game/engine/floor-layout'
 import { getDeckMatchCandidates, resolveGameTurn } from './game/engine/resolve-turn'
 import { resolveDeckTurn } from './game/engine/resolve-deck-turn'
 import { createNewGame, dealRound } from './game/engine/setup'
-import { buyShopCharm, leaveShop, rerollShop } from './game/engine/shop'
+import { buyShopCharm, createShopOffers, leaveShop, rerollShop } from './game/engine/shop'
 import { canChooseGo, chooseGo, chooseStop } from './game/engine/go-stop'
 import type { BlindIndex, GameState } from './game/engine/types'
 import { scorePlaybackConfig } from './game/scoring/score-config'
@@ -16,6 +16,13 @@ import type { ScoreEvent } from './game/scoring/types'
 
 type HandSort = 'month' | 'kind'
 type CardDisplayMode = 'image' | 'text'
+
+const VOUCHER_BASE_PRICE = 6
+const PACK_BASE_PRICE = 5
+const SHOP_PACKS = [
+  { id: 'charm-pack-a', name: '부적 팩', icon: '包' },
+  { id: 'charm-pack-b', name: '부적 팩', icon: '福' },
+] as const
 
 const handKindOrder: Record<CardKind, number> = {
   gwang: 0,
@@ -37,6 +44,14 @@ const hasUnlimitedTurnDebug = () => {
 
 const createAppGame = (): GameState => ({
   ...createNewGame(),
+  ...(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'shop'
+    ? {
+        phase: 'shop' as const,
+        shopOfferIds: createShopOffers([]),
+        coins: 99,
+        message: '상점 디버그 모드입니다.',
+      }
+    : {}),
   unlimitedTurns: hasUnlimitedTurnDebug(),
 })
 
@@ -54,6 +69,11 @@ function App() {
   } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>('image')
+  const [activePackChoices, setActivePackChoices] = useState<string[] | null>(null)
+  const [selectedPackCharmId, setSelectedPackCharmId] = useState<string | null>(null)
+  const [draggingCharmId, setDraggingCharmId] = useState<string | null>(null)
+  const [charmDropTargetId, setCharmDropTargetId] = useState<string | null>(null)
+  const [charmDragPoint, setCharmDragPoint] = useState({ x: 0, y: 0 })
   const [isResolving, setIsResolving] = useState(false)
   const [isScorePlaying, setIsScorePlaying] = useState(false)
   const [isMultiplying, setIsMultiplying] = useState(false)
@@ -68,6 +88,9 @@ function App() {
   const [activeScoreEvent, setActiveScoreEvent] = useState<ScoreEvent | null>(null)
   const [displayScore, setDisplayScore] = useState({ base: 0, mult: 1, xMult: 1, total: 0 })
   const queuedCardSelection = useRef<string | null>(null)
+  const draggedCharmId = useRef<string | null>(null)
+  const charmPointerStart = useRef<{ id: string; x: number; y: number } | null>(null)
+  const suppressCharmClick = useRef(false)
   const skipRevealedDealId = useRef<string | null>(null)
   const skipSubmittedFlightId = useRef<string | null>(null)
   const score = useMemo(
@@ -88,6 +111,7 @@ function App() {
     .map((pattern) => `${pattern.name} +${pattern.score}`)
   const currentBlind = getBlind(game.round, game.blindIndex)
   const selectedCharm = charms.find((charm) => charm.id === selectedCharmId)
+  const draggingCharm = charms.find((charm) => charm.id === draggingCharmId)
   const selectedMonth = game.hand.find((card) => card.id === game.selected)?.month
   const turn = game.turnsUsed
   const turnLimitReached = !game.unlimitedTurns && game.turnsUsed >= 10
@@ -425,12 +449,136 @@ function App() {
   }
 
   const buyCharm = (id: string) => {
-    setGame((current) => buyShopCharm(current, id))
+    setGame((current) => buyShopCharm(current, id, current.voucherCount))
   }
 
   const rerollCharms = () => setGame(rerollShop)
 
-  const exitShop = () => setGame(leaveShop)
+  const exitShop = () => {
+    setActivePackChoices(null)
+    setSelectedPackCharmId(null)
+    setGame(leaveShop)
+  }
+  const buyVoucher = () => setGame((current) => {
+    if (current.phase !== 'shop' || current.voucherPurchasedAnte === current.round) return current
+    const price = Math.max(1, VOUCHER_BASE_PRICE - current.voucherCount)
+    if (current.coins < price) return current
+    return {
+      ...current,
+      coins: current.coins - price,
+      voucherCount: current.voucherCount + 1,
+      voucherPurchasedAnte: current.round,
+      message: `상점 할인 바우처를 구매했습니다. 모든 부적과 팩이 ${current.voucherCount + 1}냥 할인됩니다.`,
+    }
+  })
+  const openCharmPack = (packId: string) => {
+    if (game.purchasedShopPackIds.includes(packId) || game.ownedCharms.length >= 5) return
+    const price = Math.max(1, PACK_BASE_PRICE - game.voucherCount)
+    if (game.coins < price) return
+    const pool = charms
+      .filter((charm) => !game.ownedCharms.includes(charm.id))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 4)
+      .map((charm) => charm.id)
+    if (!pool.length) return
+    setGame((current) => ({
+      ...current,
+      coins: current.coins - price,
+      purchasedShopPackIds: [...current.purchasedShopPackIds, packId],
+      message: '부적 팩을 열었습니다. 부적 하나를 선택하세요.',
+    }))
+    setSelectedPackCharmId(null)
+    setActivePackChoices(pool)
+  }
+  const choosePackCharm = (charmId: string) => {
+    setGame((current) => current.ownedCharms.includes(charmId) || current.ownedCharms.length >= 5
+      ? current
+      : {
+          ...current,
+          ownedCharms: [...current.ownedCharms, charmId],
+          message: `${charms.find((charm) => charm.id === charmId)?.name ?? '부적'}을 팩에서 선택했습니다.`,
+        })
+    setActivePackChoices(null)
+    setSelectedPackCharmId(null)
+  }
+  const moveOwnedCharm = (targetId: string) => {
+    const sourceId = draggedCharmId.current
+    draggedCharmId.current = null
+    setDraggingCharmId(null)
+    setCharmDropTargetId(null)
+    if (!sourceId || sourceId === targetId) return
+    setGame((current) => {
+      const sourceIndex = current.ownedCharms.indexOf(sourceId)
+      const targetIndex = current.ownedCharms.indexOf(targetId)
+      if (sourceIndex < 0 || targetIndex < 0) return current
+      const ownedCharms = [...current.ownedCharms]
+      ;[ownedCharms[sourceIndex], ownedCharms[targetIndex]] = [ownedCharms[targetIndex], ownedCharms[sourceIndex]]
+      return { ...current, ownedCharms }
+    })
+  }
+  const charmDragProps = (id: string) => ({
+    'data-charm-id': id,
+    draggable: true,
+    onDragStart: (event: React.DragEvent<HTMLButtonElement>) => {
+      draggedCharmId.current = id
+      setDraggingCharmId(id)
+      setCharmDragPoint({ x: event.clientX, y: event.clientY })
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData('text/plain', id)
+    },
+    onDrag: (event: React.DragEvent<HTMLButtonElement>) => {
+      if (event.clientX || event.clientY) setCharmDragPoint({ x: event.clientX, y: event.clientY })
+    },
+    onDragEnter: () => {
+      if (draggedCharmId.current && draggedCharmId.current !== id) setCharmDropTargetId(id)
+    },
+    onDragOver: (event: React.DragEvent<HTMLButtonElement>) => {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+    },
+    onDrop: (event: React.DragEvent<HTMLButtonElement>) => {
+      event.preventDefault()
+      moveOwnedCharm(id)
+    },
+    onDragEnd: () => {
+      draggedCharmId.current = null
+      setDraggingCharmId(null)
+      setCharmDropTargetId(null)
+    },
+    onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
+      charmPointerStart.current = { id, x: event.clientX, y: event.clientY }
+      suppressCharmClick.current = false
+      event.currentTarget.setPointerCapture(event.pointerId)
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => {
+      const start = charmPointerStart.current
+      if (!start || start.id !== id) return
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) {
+        draggedCharmId.current = id
+        suppressCharmClick.current = true
+        setDraggingCharmId(id)
+        setCharmDragPoint({ x: event.clientX, y: event.clientY })
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-charm-id]')
+        setCharmDropTargetId(target?.dataset.charmId && target.dataset.charmId !== id ? target.dataset.charmId : null)
+      }
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (suppressCharmClick.current) {
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-charm-id]')
+        if (target?.dataset.charmId) moveOwnedCharm(target.dataset.charmId)
+      }
+      charmPointerStart.current = null
+      setDraggingCharmId(null)
+      setCharmDropTargetId(null)
+    },
+  })
+  const openCharmDetail = (id: string) => {
+    if (suppressCharmClick.current) {
+      suppressCharmClick.current = false
+      return
+    }
+    setSelectedCharmId(id)
+  }
   const continueGo = () => setGame(chooseGo)
   const stopGo = () => setGame(chooseStop)
 
@@ -443,6 +591,12 @@ function App() {
 
   return (
     <main className={`game-shell capture-game card-mode-${cardDisplayMode} ${isResolving ? 'is-resolving' : ''} ${isScorePlaying ? 'is-score-playing' : ''} ${matchChoice?.source === 'deck' ? 'is-deck-choice-sequence' : ''} ${activeScoreEvent?.emphasis === 'critical' || activeScoreEvent?.sourceType === 'yaku' ? 'score-shake' : ''}`}>
+      {draggingCharm && (
+        <div className="charm-drag-indicator" style={{ left: charmDragPoint.x, top: charmDragPoint.y, '--accent': draggingCharm.accent } as React.CSSProperties}>
+          <i>{draggingCharm.icon}</i>
+          <span><small>이동 중</small><strong>{draggingCharm.name}</strong></span>
+        </div>
+      )}
       <div className="rotate-device" aria-hidden="true">
         <div className="rotate-phone">↻</div>
         <strong>가로로 돌려주세요</strong>
@@ -611,7 +765,7 @@ function App() {
             <span className="slot-title">부적</span>
             {game.ownedCharms.map((id) => {
               const charm = charms.find((item) => item.id === id)!
-              return <button className={`mini-charm ${activeScoreEvent?.sourceType === 'joker' && activeScoreEvent.sourceId === id ? 'is-triggered' : ''}`} key={id} type="button" aria-label={`${charm.name} 설명 보기`} title={`${charm.name} · ${charm.description}`} onClick={() => setSelectedCharmId(id)} style={{ '--accent': charm.accent } as React.CSSProperties}><b>{charm.icon}</b><span>{charm.name}</span></button>
+              return <button className={`mini-charm draggable-charm ${draggingCharmId === id ? 'is-dragging' : ''} ${charmDropTargetId === id ? 'is-drop-target' : ''} ${activeScoreEvent?.sourceType === 'joker' && activeScoreEvent.sourceId === id ? 'is-triggered' : ''}`} key={id} type="button" aria-label={`${charm.name} 설명 보기`} title={`${charm.name} · ${charm.description}`} onClick={() => openCharmDetail(id)} style={{ '--accent': charm.accent } as React.CSSProperties} {...charmDragProps(id)}><b>{charm.icon}</b><span>{charm.name}</span></button>
             })}
             {Array.from({ length: Math.max(0, 5 - game.ownedCharms.length) }).map((_, index) => <div className="empty-slot" key={index}>+</div>)}
           </div>
@@ -798,20 +952,101 @@ function App() {
       )}
 
       {game.phase === 'shop' && (
-        <div className="overlay"><section className="shop-modal">
-          <div className="modal-heading"><div><span>{currentBlind.name} 클리어</span><h2>부적 상점</h2><p>진열된 부적을 구매하거나 상품을 리롤할 수 있습니다.</p></div><strong>{game.coins}냥</strong></div>
-          <div className="shop-grid">
-            {game.shopOfferIds.map((id) => charms.find((charm) => charm.id === id)).filter((charm) => charm !== undefined).map((charm) => {
-              const owned = game.ownedCharms.includes(charm.id)
-              return <button key={charm.id} className="shop-charm" disabled={owned || game.coins < charm.price} onClick={() => buyCharm(charm.id)} style={{ '--accent': charm.accent } as React.CSSProperties}>
-                <i>{charm.icon}</i><h3>{charm.name}</h3><p>{charm.description}</p><b>{owned ? '보유 중' : `${charm.price}냥`}</b>
+        <section className="shop-screen"><div className="shop-layout">
+          <aside className="status-rail panel shop-status-rail">
+            <div className="round-label">ANTE {game.round} · SHOP</div>
+            <div className="goal-score"><strong>0 / {game.target}</strong></div>
+            <div className="balatro-score-strip status-score-strip" aria-label="초기화된 상점 상태">
+              <span className="chip-score"><i>누적 화점</i><b>0</b></span>
+              <span className="xmult-score"><i>현재 고</i><b>0고</b></span>
+              <span className="mult-score"><i>현재 족보 배수</i><b>×1</b></span>
+            </div>
+            <div className="progress-track"><div style={{ width: '0%' }} /></div>
+            <div className="turn-info"><span>진행 턴</span><strong>0 / 10</strong></div>
+            <section className="rail-won-pile shop-empty-won-pile">
+              <div className="won-pile-heading"><span className="eyebrow">획득패</span><span className="go-stop-score">고스톱 족보 <strong>0점</strong></span></div>
+              <div className="won-groups">
+                {(['광', '열끗', '띠', '피'] as const).map((label) => <div className="won-group" key={label}><span>{label} · 0장</span><div><i>아직 없음</i></div><b>0점</b></div>)}
+              </div>
+            </section>
+            <div className="coin-box"><span>보유 엽전</span><strong>{game.coins}냥</strong></div>
+            <div className="charms-row status-charms">
+              <span className="slot-title">부적</span>
+              {game.ownedCharms.map((id) => {
+                const charm = charms.find((item) => item.id === id)!
+                return <button className={`mini-charm draggable-charm ${draggingCharmId === id ? 'is-dragging' : ''} ${charmDropTargetId === id ? 'is-drop-target' : ''}`} key={id} type="button" aria-label={`${charm.name} 상세 설명 보기`} title={`${charm.name} · ${charm.description}`} onClick={() => openCharmDetail(id)} style={{ '--accent': charm.accent } as React.CSSProperties} {...charmDragProps(id)}><b>{charm.icon}</b><span>{charm.name}</span></button>
+              })}
+              {Array.from({ length: Math.max(0, 5 - game.ownedCharms.length) }).map((_, index) => <div className="empty-slot" key={index}>+</div>)}
+            </div>
+          </aside>
+          <div className="shop-shell">
+          <div className="shop-content">
+            <section className="shop-store-section">
+              <div className="shop-grid">
+                <div className="shop-grid-controls">
+                  <button className="shop-exit-button" onClick={exitShop}>나가기<span>다음 스테이지</span></button>
+                  <button className="reroll-shop shop-grid-reroll" disabled={game.coins < game.shopRerollCost || game.ownedCharms.length >= charms.length} onClick={rerollCharms}>리롤<span>{game.shopRerollCost}냥</span></button>
+                </div>
+                {game.shopOfferIds.map((id) => charms.find((charm) => charm.id === id)).filter((charm) => charm !== undefined).map((charm) => {
+                  const owned = game.ownedCharms.includes(charm.id)
+                  const price = Math.max(1, charm.price - game.voucherCount)
+                  return <button key={charm.id} className="shop-charm" disabled={owned || game.coins < price} onClick={() => buyCharm(charm.id)} style={{ '--accent': charm.accent } as React.CSSProperties}>
+                    <i>{charm.icon}</i><h3>{charm.name}</h3><p>{charm.description}</p><b>{owned ? '보유 중' : `${price}냥`}</b>
+                  </button>
+                })}
+                {!game.shopOfferIds.length && <p className="shop-empty">구매할 수 있는 부적이 더 없습니다.</p>}
+              </div>
+            </section>
+            <div className="shop-lower-grid">
+              <section className="voucher-panel">
+                <button
+                  className="voucher-card"
+                  disabled={game.voucherPurchasedAnte === game.round || game.coins < Math.max(1, VOUCHER_BASE_PRICE - game.voucherCount)}
+                  onClick={buyVoucher}
+                >
+                  <i>券</i>
+                  <div><strong>상점 할인권</strong><p>모든 일반 부적과 팩의 가격을 영구적으로 1냥 할인합니다.</p></div>
+                  <b>{game.voucherPurchasedAnte === game.round ? '이번 앤티 구매 완료' : `${Math.max(1, VOUCHER_BASE_PRICE - game.voucherCount)}냥`}</b>
+                </button>
+              </section>
+              <section className="pack-section">
+                <div className="pack-grid">
+                  {SHOP_PACKS.map((pack) => {
+                    const purchased = game.purchasedShopPackIds.includes(pack.id)
+                    const price = Math.max(1, PACK_BASE_PRICE - game.voucherCount)
+                    return <button className="pack-card" key={pack.id} disabled={purchased || game.coins < price || game.ownedCharms.length >= 5} onClick={() => openCharmPack(pack.id)}>
+                      <i>{pack.icon}</i><strong>{pack.name}</strong><span>무작위 부적 4개 중 1개 선택</span><b>{purchased ? '개봉 완료' : `${price}냥`}</b>
+                    </button>
+                  })}
+                </div>
+              </section>
+            </div>
+          </div>
+          </div>
+        </div></section>
+      )}
+
+      {activePackChoices && (
+        <div className="overlay pack-choice-overlay"><section className="pack-choice-modal">
+          <span className="eyebrow">PACK OPEN</span>
+          <h2>부적 하나를 선택하세요</h2>
+          <p>부적을 고른 뒤 아래의 선택하기 버튼을 누르세요.</p>
+          <div className="pack-choice-grid">
+            {activePackChoices.map((id) => {
+              const charm = charms.find((item) => item.id === id)
+              if (!charm) return null
+              return <button className={selectedPackCharmId === charm.id ? 'is-selected' : ''} key={charm.id} onClick={() => setSelectedPackCharmId(charm.id)} style={{ '--accent': charm.accent } as React.CSSProperties}>
+                <i>{charm.icon}</i><strong>{charm.name}</strong><span>{charm.description}</span>
               </button>
             })}
-            {!game.shopOfferIds.length && <p className="shop-empty">구매할 수 있는 부적이 더 없습니다.</p>}
           </div>
-          <div className="shop-actions">
-            <button className="reroll-shop" disabled={game.coins < game.shopRerollCost || game.ownedCharms.length >= charms.length} onClick={rerollCharms}>리롤 · {game.shopRerollCost}냥</button>
-            <button className="primary-action next-round" onClick={exitShop}>상점 나가기<span>블라인드 선택 화면</span></button>
+          <div className="pack-choice-actions">
+            <button className="pack-confirm-button" disabled={!selectedPackCharmId} onClick={() => selectedPackCharmId && choosePackCharm(selectedPackCharmId)}>선택하기</button>
+            <button className="pack-leave-button" onClick={() => {
+              setActivePackChoices(null)
+              setSelectedPackCharmId(null)
+              setGame((current) => ({ ...current, message: '팩의 부적 선택을 포기했습니다.' }))
+            }}>나가기<span>선택 포기</span></button>
           </div>
         </section></div>
       )}

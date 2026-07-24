@@ -19,6 +19,9 @@ export interface GameState {
   ownedCharms: string[]
   shopOfferIds: string[]
   shopRerollCost: number
+  voucherCount: number
+  voucherPurchasedAnte: number | null
+  purchasedShopPackIds: string[]
   phase: Phase
   pendingPhase: 'shop' | 'gameover' | null
   gameOverReason: string | null

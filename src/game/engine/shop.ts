@@ -18,18 +18,19 @@ export function createShopOffers(ownedCharmIds: string[], random: () => number =
   return pool.slice(0, SHOP_OFFER_COUNT)
 }
 
-export function buyShopCharm(state: GameState, charmId: string): GameState {
+export function buyShopCharm(state: GameState, charmId: string, discount = 0): GameState {
   const charm = charms.find((item) => item.id === charmId)
+  const price = charm ? Math.max(1, charm.price - discount) : 0
   if (!charm
     || !state.shopOfferIds.includes(charmId)
     || state.ownedCharms.includes(charmId)
     || state.ownedCharms.length >= MAX_OWNED_CHARMS
-    || state.coins < charm.price
+    || state.coins < price
   ) return state
 
   return {
     ...state,
-    coins: state.coins - charm.price,
+    coins: state.coins - price,
     ownedCharms: [...state.ownedCharms, charmId],
     shopOfferIds: state.shopOfferIds.filter((id) => id !== charmId),
     message: `${charm.name}을 손에 넣었습니다.`,
@@ -62,6 +63,7 @@ export function leaveShop(state: GameState): GameState {
     pendingPhase: null,
     shopOfferIds: [],
     shopRerollCost: INITIAL_REROLL_COST,
+    purchasedShopPackIds: [],
     message: state.blindIndex === 2 ? '새 앤티가 열렸습니다.' : '다음 블라인드를 선택하세요.',
     lastRevealed: [],
     lastPlayedId: null,

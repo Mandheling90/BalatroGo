@@ -14,6 +14,7 @@ export function prepareBlindClear(state: GameState): GameState {
     pendingPhase: 'shop',
     shopOfferIds: createShopOffers(state.ownedCharms),
     shopRerollCost: INITIAL_REROLL_COST,
+    purchasedShopPackIds: [],
     message: `목표 화점 ${state.target}점을 달성해 ${blind.name}를 클리어했습니다.`,
   }
 }

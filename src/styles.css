@@ -86,26 +86,139 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 
 .overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: transparent; backdrop-filter: none; animation: fade .25s ease; }
 @keyframes fade { from { opacity: 0; } }
-.shop-modal, .rules-modal, .result-modal { width: min(920px, 100%); max-height: 92vh; overflow-y: auto; padding: 34px; background: #101d17; border: 1px solid #5d604f; border-radius: 18px; box-shadow: 0 30px 90px #000; }
+.rules-modal, .result-modal { width: min(920px, 100%); max-height: 92vh; overflow-y: auto; padding: 34px; background: #101d17; border: 1px solid #5d604f; border-radius: 18px; box-shadow: 0 30px 90px #000; }
+.shop-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  color: #eeeade;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(226, 177, 72, .12), transparent 34%),
+    linear-gradient(155deg, #102019, #07100c 72%);
+  animation: fade .25s ease;
+}
+.shop-layout {
+  width: min(1500px, 100%);
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: clamp(210px, 22vw, 280px) minmax(0, 1fr);
+  gap: clamp(10px, 1.5vw, 20px);
+  margin: 0 auto;
+  padding: clamp(10px, 1.5vw, 20px);
+}
+.shop-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+}
+.shop-screen .shop-status-rail {
+  position: static;
+  top: auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  overflow: hidden;
+  padding: clamp(10px, 1.5vw, 18px);
+}
+.shop-status-rail .round-label { flex: none; }
+.shop-status-rail .goal-score,
+.shop-status-rail .status-score-strip,
+.shop-status-rail .turn-info,
+.shop-status-rail .shop-empty-won-pile {
+  max-height: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.shop-status-rail .progress-track { flex: none; }
+.shop-status-rail .shop-empty-won-pile { flex: 0 0 0; }
+.shop-status-rail .won-groups { height: 100%; grid-template-columns: 1fr 1fr; gap: 3px; }
+.shop-status-rail .won-group { min-height: 0; }
+.shop-status-rail .won-group > div { min-height: 0; height: 100%; }
+.shop-status-rail .coin-box { flex: none; margin: 5px 0; }
+.shop-status-rail .status-charms { flex: none; }
+.shop-content {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: clamp(10px, 1.5vh, 18px);
+}
+.shop-store-section, .voucher-panel, .pack-section {
+  min-height: 0;
+  padding: clamp(10px, 1.5vw, 18px);
+  background: rgba(6, 13, 9, .52);
+  border: 1px solid rgba(99, 116, 104, .3);
+  border-radius: 16px;
+}
 .modal-heading { display: flex; justify-content: space-between; align-items: start; }
 .modal-heading span { color: #cf9f42; font-size: 10px; letter-spacing: .18em; font-weight: 800; }
 .modal-heading h2, .rules-modal h2 { font-family: 'Gowun Batang'; font-size: 30px; margin: 5px 0; }
 .modal-heading p { color: #818b83; margin: 0; font-size: 12px; }
 .modal-heading > strong { padding: 8px 15px; color: #f6cd65; background: #080e0b; border-radius: 99px; }
-.shop-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: min(560px, 100%); margin: 28px auto; }
-.shop-charm { min-height: 225px; padding: 22px 15px; border-radius: 11px; color: #eeeade; background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 12%, #122019), #0b130f); border: 1px solid color-mix(in srgb, var(--accent) 60%, #1c2a23); cursor: pointer; text-align: center; }
+.shop-grid { height: 100%; display: grid; grid-template-columns: auto repeat(2, minmax(0, 1fr)); align-items: stretch; gap: clamp(8px, 1.2vw, 14px); width: 100%; margin: 0; }
+.shop-grid-controls { width: clamp(64px, 8vw, 94px); min-width: 0; display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+.shop-grid > .shop-grid-controls { grid-column: 1; grid-row: 1; }
+.shop-coin-balance { display: grid; place-items: center; gap: 2px; padding: 7px 4px; color: #f6cd65; background: #080e0b; border: 1px solid #655837; border-radius: 10px; text-align: center; }
+.shop-coin-balance span { color: #93886a; font-size: 7px; font-weight: 800; }
+.shop-coin-balance strong { font-size: 12px; white-space: nowrap; }
+.shop-grid-controls button { width: 100%; min-height: 0; display: grid; place-content: center; gap: 4px; padding: 7px; border-radius: 10px; cursor: pointer; font-size: 10px; font-weight: 900; }
+.shop-grid-controls button span { display: block; font-size: 7px; font-weight: 700; line-height: 1.25; }
+.shop-exit-button { color: #fff0e8; background: linear-gradient(180deg, #d95a42, #9f3528); border: 1px solid #e87861; }
+.shop-grid-reroll { color: #f6cd65; background: #15231c; border: 1px solid #6f694c; }
+.shop-grid-reroll span { display: block; color: #bfae7a; font-size: 8px; }
+.shop-charm { min-height: 0; padding: clamp(10px, 1.6vw, 20px); border-radius: 12px; color: #eeeade; background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 12%, #122019), #0b130f); border: 1px solid color-mix(in srgb, var(--accent) 60%, #1c2a23); cursor: pointer; text-align: center; }
 .shop-charm:hover:not(:disabled) { transform: translateY(-5px); box-shadow: 0 12px 25px color-mix(in srgb, var(--accent) 12%, transparent); }
 .shop-charm:disabled { opacity: .42; cursor: not-allowed; }
-.shop-charm i { display: block; color: var(--accent); font: normal 38px serif; }
-.shop-charm h3 { margin: 13px 0 8px; font-family: 'Gowun Batang'; }
-.shop-charm p { min-height: 55px; color: #9ca69e; font-size: 11px; line-height: 1.6; }
-.shop-charm b { color: #f0c85e; font-size: 13px; }
-.shop-actions { display: flex; justify-content: center; gap: 12px; }
-.shop-actions button { min-height: 52px; border-radius: 9px; padding: 0 24px; cursor: pointer; font-weight: 800; }
-.shop-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.shop-charm i { display: block; color: var(--accent); font: normal clamp(28px, 5vh, 48px) serif; }
+.shop-charm h3 { margin: 7px 0 4px; font: 700 clamp(14px, 2.2vh, 21px) 'Gowun Batang'; }
+.shop-charm p { min-height: 30px; margin: 4px 0; color: #9ca69e; font-size: clamp(8px, 1.35vh, 11px); line-height: 1.45; }
+.shop-charm b { color: #f0c85e; font-size: clamp(13px, 1.5vw, 17px); }
+.shop-lower-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: clamp(10px, 1.5vw, 18px); }
+.voucher-card { width: 100%; height: 100%; min-height: 0; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin: 0; padding: 12px 16px; color: #e9e3d5; background: linear-gradient(145deg, #283020, #111a13); border: 1px solid #9d8448; border-radius: 11px; cursor: pointer; text-align: left; }
+.voucher-card > i { color: #f2ca65; font: normal 30px 'Gowun Batang'; }
+.voucher-card strong { display: block; font-size: 17px; }
+.voucher-card p { margin: 5px 0 0; color: #9ca69e; font-size: 10px; line-height: 1.5; }
+.voucher-card > b { color: #f2ca65; white-space: nowrap; }
+.voucher-card:disabled, .pack-card:disabled { opacity: .42; cursor: not-allowed; }
+.pack-grid { height: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.pack-card { min-height: 0; display: grid; place-items: center; gap: 3px; padding: 9px 12px; color: #e9e3d5; background: linear-gradient(150deg, #291b2e, #121019); border: 1px solid #74547d; border-radius: 11px; cursor: pointer; text-align: center; }
+.pack-card > i { color: #d99ee9; font: normal 26px 'Gowun Batang'; }
+.pack-card > strong { font-size: 15px; }
+.pack-card > span { color: #a89cab; font-size: 9px; }
+.pack-card > b { color: #efc66b; font-size: 12px; }
 .reroll-shop { color: #f6cd65; background: #15231c; border: 1px solid #6f694c; }
-.shop-empty { grid-column: 1 / -1; padding: 40px 16px; color: #9ca69e; text-align: center; }
+.shop-empty { grid-column: 2 / -1; grid-row: 1; display: grid; place-items: center; margin: 0; padding: 40px 16px; color: #9ca69e; text-align: center; }
 .next-round { float: none; border: 0; }
+.pack-choice-overlay { z-index: 90; padding: 10px; overflow: hidden; background: rgba(3, 7, 5, .72); }
+.pack-choice-modal { width: min(960px, 100%); height: min(620px, calc(100dvh - 20px)); min-height: 0; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; padding: clamp(14px, 3vh, 30px); color: #eeeade; background: #101d17; border: 1px solid #6f684e; border-radius: 18px; text-align: center; overflow: hidden; }
+.pack-choice-modal h2 { margin: 5px 0; font: 700 28px 'Gowun Batang'; }
+.pack-choice-modal > p { margin: 0 0 22px; color: #929c94; font-size: 11px; }
+.pack-choice-grid { min-height: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; gap: clamp(7px, 1.5vw, 14px); }
+.pack-choice-grid button { width: 100%; height: min(280px, 88%); min-height: 0; display: grid; place-items: center; align-content: center; gap: clamp(5px, 1.5vh, 12px); padding: clamp(8px, 2vh, 20px) 12px; color: #eeeade; background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 13%, #122019), #0b130f); border: 1px solid color-mix(in srgb, var(--accent) 60%, #1c2a23); border-radius: 12px; cursor: pointer; overflow: hidden; }
+.pack-choice-grid button:hover { transform: translateY(-5px); }
+.pack-choice-grid button.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 28px color-mix(in srgb, var(--accent) 38%, transparent); transform: translateY(-5px); }
+.pack-choice-grid i { color: var(--accent); font: normal clamp(25px, 7vh, 45px) serif; }
+.pack-choice-grid strong { font: 700 clamp(12px, 2.8vh, 18px) 'Gowun Batang'; }
+.pack-choice-grid span { color: #9ca69e; font-size: clamp(7px, 1.6vh, 10px); line-height: 1.4; }
+.pack-choice-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(420px, 100%); margin: 10px auto 0; }
+.pack-choice-actions button { min-height: 45px; border-radius: 9px; cursor: pointer; font-weight: 900; }
+.pack-choice-actions button:disabled { opacity: .35; cursor: not-allowed; }
+.pack-confirm-button { color: #171108; background: #e9bd59; border: 0; }
+.pack-leave-button { color: #e8e3d6; background: #17241d; border: 1px solid #526257; }
+.pack-leave-button span { display: block; margin-top: 2px; font-size: 7px; font-weight: 500; }
 .result-modal { width: min(480px, 100%); text-align: center; }
 .go-stop-modal { width: min(460px, 100%); padding: 30px; text-align: center; background: #101d17; border: 1px solid #6f684e; border-radius: 16px; box-shadow: 0 28px 80px #000; }
 .go-stop-modal h2 { margin: 5px 0; font: 700 29px 'Gowun Batang'; color: #f0c760; }
@@ -145,7 +258,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .resource-row { grid-column: 1; }
   .hand { min-height: 270px; padding-left: 0; padding-right: 0; }
   .hwatu-card { width: 90px; flex-basis: 90px; margin-left: -20px; }
-  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-grid { grid-template-columns: auto repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 580px) {
@@ -170,10 +283,60 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   .actions { width: 100%; }
   .actions button { flex: 1; padding: 0 12px; font-size: 12px; }
   .primary-action span { margin-left: 8px; padding-left: 8px; }
-  .shop-modal, .rules-modal { padding: 24px 18px; }
-  .shop-grid { grid-template-columns: 1fr 1fr; }
-  .shop-charm { min-height: 190px; }
+  .rules-modal { padding: 24px 18px; }
+  .shop-layout { grid-template-columns: 190px minmax(0, 1fr); padding: 7px; }
+  .shop-shell { padding: 0; }
+  .shop-grid { grid-template-columns: auto 1fr 1fr; }
+  .shop-charm { min-height: 0; padding: 8px 10px; }
+  .shop-lower-grid { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .voucher-card { grid-template-columns: 1fr; justify-items: center; gap: 3px; padding: 8px; text-align: center; }
+  .voucher-card > i { display: none; }
+  .voucher-card p { display: none; }
+  .pack-card > span { display: none; }
+  .pack-choice-grid { grid-template-columns: repeat(4, 1fr); }
   .rules-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-height: 680px) {
+  .shop-layout { grid-template-columns: 190px minmax(0, 1fr); padding: 6px; gap: 7px; }
+  .shop-shell { padding: 0; gap: 7px; }
+  .shop-content { gap: 7px; }
+  .shop-store-section, .voucher-panel, .pack-section { padding: 7px 10px; border-radius: 10px; }
+  .shop-grid { height: 100%; margin: 0; }
+  .shop-charm { padding: 5px 10px; }
+  .shop-charm i { font-size: 25px; }
+  .shop-charm h3 { margin: 2px 0; font-size: 13px; }
+  .shop-charm p { min-height: 0; margin: 2px 0; font-size: 7px; }
+  .shop-charm b { font-size: 10px; }
+  .voucher-card { padding: 6px 10px; }
+  .voucher-card > i { font-size: 21px; }
+  .voucher-card strong, .pack-card > strong { font-size: 10px; }
+  .voucher-card p, .pack-card > span { font-size: 6px; }
+  .voucher-card > b, .pack-card > b { font-size: 8px; }
+  .pack-card { padding: 5px 8px; }
+  .pack-card > i { font-size: 18px; }
+  .shop-screen .shop-status-rail { padding: 7px; }
+  .shop-status-rail .goal-score strong { font-size: 14px; }
+  .shop-status-rail .status-score-strip { margin: 3px 0; gap: 2px; }
+  .shop-status-rail .status-score-strip span { padding: 2px 4px; }
+  .shop-status-rail .shop-empty-won-pile { margin: 3px 0; }
+  .shop-status-rail .coin-box { margin: 3px 0; padding: 4px 7px; }
+  .shop-grid-controls { width: 58px; gap: 5px; }
+  .shop-grid-controls button { font-size: 8px; }
+  .pack-choice-modal { padding: 10px 14px; border-radius: 11px; }
+  .pack-choice-modal h2 { margin: 1px 0; font-size: 18px; }
+  .pack-choice-modal > p { margin-bottom: 7px; font-size: 7px; }
+  .pack-choice-grid button { gap: 4px; padding: 6px; border-radius: 8px; }
+  .pack-choice-grid i { font-size: 23px; }
+  .pack-choice-grid strong { font-size: 11px; }
+  .pack-choice-grid span { font-size: 6px; }
+  .pack-choice-actions { margin-top: 5px; }
+  .pack-choice-actions button { min-height: 32px; font-size: 9px; }
+}
+
+@media (orientation: portrait) and (max-width: 580px) {
+  .pack-choice-modal { height: calc(100dvh - 16px); }
+  .pack-choice-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* 누적 획득형 고스톱 보드 */
@@ -572,6 +735,44 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   animation: flowerPointHit .38s cubic-bezier(.15, 1.65, .35, 1) both;
 }
 .mini-charm.is-triggered { animation: jokerTrigger .34s cubic-bezier(.2, 1.5, .4, 1) both; }
+.draggable-charm { cursor: grab; touch-action: none; user-select: none; }
+.draggable-charm:active { cursor: grabbing; filter: brightness(1.18); transform: scale(.96); }
+.draggable-charm.is-dragging {
+  opacity: .28;
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  filter: grayscale(.5);
+}
+.draggable-charm.is-drop-target {
+  opacity: 1;
+  transform: translateY(-4px) scale(1.08);
+  box-shadow: 0 0 0 2px #fff2a6, 0 0 22px color-mix(in srgb, var(--accent) 70%, #fff);
+  animation: charmDropTarget .55s ease-in-out infinite alternate;
+}
+.charm-drag-indicator {
+  position: fixed;
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 112px;
+  padding: 8px 11px;
+  color: #f7f2e7;
+  background: color-mix(in srgb, var(--accent) 18%, rgba(8, 15, 11, .96));
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .55), 0 0 20px color-mix(in srgb, var(--accent) 42%, transparent);
+  pointer-events: none;
+  transform: translate(14px, -50%);
+}
+.charm-drag-indicator > i { color: var(--accent); font: normal 23px serif; }
+.charm-drag-indicator span { display: grid; text-align: left; }
+.charm-drag-indicator small { color: #b8bcb5; font-size: 6px; font-weight: 800; letter-spacing: .12em; }
+.charm-drag-indicator strong { margin-top: 1px; font-size: 10px; white-space: nowrap; }
+@keyframes charmDropTarget {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.38); }
+}
 .score-shake { animation: scoreScreenShake .25s linear both; }
 .peok-effect {
   position: fixed;
