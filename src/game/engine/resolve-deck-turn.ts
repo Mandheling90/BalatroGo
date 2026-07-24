@@ -1,5 +1,4 @@
-import { scoreCaptured } from '../../game'
-import { calculateBalatroScore } from '../scoring/calculate-score'
+import { calculateBalatroScore, getSettlementScore } from '../scoring/calculate-score'
 import { getFloorPosition } from './floor-layout'
 import type { GameState } from './types'
 import { prepareBlindClear } from './clear-blind'
@@ -20,13 +19,6 @@ export function resolveDeckTurn(current: GameState): GameState {
   const newlyCaptured = placedTable.filter((card) => completedMonths.includes(card.month))
   const table = placedTable.filter((card) => !completedMonths.includes(card.month))
   const captured = [...current.captured, ...newlyCaptured]
-  const nextScore = scoreCaptured(
-    captured,
-    current.ownedCharms,
-    current.ruleBonus,
-    current.ruleDetails,
-    current.goCount,
-  )
   const turnScore = calculateBalatroScore({
     cards: captured,
     previousCards: current.captured,
@@ -35,7 +27,9 @@ export function resolveDeckTurn(current: GameState): GameState {
     goCount: current.goCount,
   })
   const nextTurnsUsed = current.turnsUsed + 1
-  const reachedTarget = nextScore.total >= current.target
+  const settlement = getSettlementScore(turnScore)
+  const scoreTotal = current.scoreTotal + settlement.score
+  const reachedTarget = scoreTotal >= current.target
   const failed = !reachedTarget && nextTurnsUsed >= 10
   const placedLabel = revealed.map((card) => `${card.month}월`).join(' · ')
   const captureLabel = completedMonths.length
@@ -62,6 +56,9 @@ export function resolveDeckTurn(current: GameState): GameState {
     lastRuleEffect: null,
     turnsUsed: nextTurnsUsed,
     lastTurnAction: 'deck',
+    scoreTotal,
+    lastTurnBasePoints: settlement.basePoints,
+    lastTurnScore: settlement.score,
   }
   return reachedTarget ? prepareBlindClear(result) : result
 }

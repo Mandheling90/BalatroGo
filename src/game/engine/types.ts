@@ -39,4 +39,7 @@ export interface GameState {
   lastRuleEffect: 'peok' | 'jjok' | null
   turnsUsed: number
   lastTurnAction: 'card' | 'deck' | null
+  scoreTotal: number
+  lastTurnBasePoints: number
+  lastTurnScore: number
 }

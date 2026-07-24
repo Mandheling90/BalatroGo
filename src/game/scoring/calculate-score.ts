@@ -27,6 +27,14 @@ const uniqueCards = (cards: HwatuCard[]) => {
 export const getCardPoints = (card: HwatuCard) =>
   cardPointConfig[card.kind] * (card.kind === 'pi' ? (card.piValue ?? 1) : 1)
 
+export const getSettlementScore = (result: BalatroScoreResult) => {
+  const newlyEarnedPoints = result.events.reduce((sum, event) => sum + (event.baseDelta ?? 0), 0)
+  return {
+    basePoints: newlyEarnedPoints,
+    score: newlyEarnedPoints * result.multiplier * result.finalMultiplier,
+  }
+}
+
 const modifierContext = (cards: HwatuCard[]): ScoreModifierContext => {
   const evaluation = evaluatePatterns(cards)
   return {

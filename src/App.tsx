@@ -41,6 +41,8 @@ function App() {
   const [handSort, setHandSort] = useState<HandSort>('month')
   const [isResolving, setIsResolving] = useState(false)
   const [isScorePlaying, setIsScorePlaying] = useState(false)
+  const [isMultiplying, setIsMultiplying] = useState(false)
+  const [scoredCardCount, setScoredCardCount] = useState(0)
   const [submitFlight, setSubmitFlight] = useState({ fromX: 0, fromY: 0, toX: 0, toY: 0 })
   const [activeScoreEvent, setActiveScoreEvent] = useState<ScoreEvent | null>(null)
   const [displayScore, setDisplayScore] = useState({ base: 0, mult: 1, xMult: 1, total: 0 })
@@ -118,7 +120,8 @@ function App() {
     const events = game.lastScoreEvents
     if (!events.length) {
       setIsScorePlaying(false)
-      setDisplayScore({ base: score.cardPoints + score.jokerPoints, mult: score.multiplier, xMult: score.finalMultiplier, total: score.total })
+      setIsMultiplying(false)
+      setDisplayScore({ base: game.lastTurnBasePoints, mult: score.multiplier, xMult: score.finalMultiplier, total: game.scoreTotal })
       return
     }
     setIsScorePlaying(true)
@@ -127,15 +130,21 @@ function App() {
     const hasGoEvent = events.some((event) => event.sourceType === 'go')
     const goRatio = game.goCount > 0 ? (game.goCount + 1) / Math.max(1, game.goCount) : 1
     let staged = {
-      base: score.cardPoints + score.jokerPoints - baseDelta,
+      base: game.lastTurnBasePoints - baseDelta,
       mult: score.multiplier - multDelta,
       xMult: hasGoEvent ? score.finalMultiplier / goRatio : score.finalMultiplier,
     }
-    const startingTotal = staged.base * staged.mult * staged.xMult
+    const startingTotal = game.scoreTotal - game.lastTurnScore
     setDisplayScore({ ...staged, total: startingTotal })
     setActiveScoreEvent(null)
+    setScoredCardCount(0)
     const timers: number[] = []
-    let elapsed = scorePlaybackConfig.startDelayMs
+    const captureAnimationEnd = game.lastCapturedIds.length
+      ? Math.max(...game.captured
+        .filter((card) => game.lastCapturedIds.includes(card.id))
+        .map((card) => getCaptureEffectDelay(card) + 520))
+      : 0
+    let elapsed = Math.max(scorePlaybackConfig.startDelayMs, captureAnimationEnd + 120)
     events.forEach((event) => {
       elapsed += event.emphasis === 'normal' ? scorePlaybackConfig.eventDelayMs : scorePlaybackConfig.strongDelayMs
       timers.push(window.setTimeout(() => {
@@ -145,17 +154,24 @@ function App() {
           xMult: event.xMult ?? staged.xMult,
         }
         setActiveScoreEvent(event)
+        if (event.sourceType === 'card') {
+          setScoredCardCount(scoringCardEvents.findIndex((cardEvent) => cardEvent.id === event.id) + 1)
+        }
         if ('vibrate' in navigator) navigator.vibrate(event.emphasis === 'normal' ? 12 : [18, 24, 30])
         setDisplayScore((current) => ({ ...current, base: staged.base, mult: staged.mult, xMult: staged.xMult }))
       }, elapsed))
     })
     timers.push(window.setTimeout(() => {
       setActiveScoreEvent(null)
+      setIsMultiplying(true)
+    }, elapsed + scorePlaybackConfig.strongDelayMs))
+    timers.push(window.setTimeout(() => {
+      setIsMultiplying(false)
       const startedAt = performance.now()
       const tick = (now: number) => {
         const progress = Math.min(1, (now - startedAt) / scorePlaybackConfig.countUpMs)
         const eased = 1 - Math.pow(1 - progress, 3)
-        setDisplayScore((current) => ({ ...current, total: Math.round(startingTotal + (score.total - startingTotal) * eased) }))
+        setDisplayScore((current) => ({ ...current, total: Math.round(startingTotal + (game.scoreTotal - startingTotal) * eased) }))
         if (progress < 1) timers.push(window.requestAnimationFrame(tick))
         else {
           setIsScorePlaying(false)
@@ -163,26 +179,28 @@ function App() {
         }
       }
       timers.push(window.requestAnimationFrame(tick))
-    }, elapsed + scorePlaybackConfig.strongDelayMs))
+    }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.multiplyDelayMs))
     timers.push(window.setTimeout(() => {
       setActiveScoreEvent(null)
       setDisplayScore({
-        base: score.cardPoints + score.jokerPoints,
+        base: game.lastTurnBasePoints,
         mult: score.multiplier,
         xMult: score.finalMultiplier,
-        total: score.total,
+        total: game.scoreTotal,
       })
       setIsScorePlaying(false)
+      setIsMultiplying(false)
       setIsResolving(false)
-    }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.countUpMs + 120))
+    }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.multiplyDelayMs + scorePlaybackConfig.countUpMs + 120))
     return () => {
       timers.forEach((timer) => {
         window.clearTimeout(timer)
         window.cancelAnimationFrame(timer)
       })
       setIsScorePlaying(false)
+      setIsMultiplying(false)
     }
-  }, [game.lastScoreEvents, game.goCount, score.cardPoints, score.finalMultiplier, score.jokerPoints, score.multiplier, score.total])
+  }, [game.captured, game.goCount, game.lastCapturedIds, game.lastRevealed, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnScore, game.scoreTotal, score.finalMultiplier, score.multiplier])
 
   useEffect(() => {
     if (isResolving || isScorePlaying || !queuedCardSelection.current) return
@@ -318,6 +336,9 @@ function App() {
         lastRuleEffect: null,
         turnsUsed: 0,
         lastTurnAction: null,
+        scoreTotal: 0,
+        lastTurnBasePoints: 0,
+        lastTurnScore: 0,
       }
     })
   }
@@ -361,22 +382,29 @@ function App() {
         <strong>가로로 돌려주세요</strong>
         <span>화투록은 가로 화면에 맞춰져 있습니다.</span>
       </div>
-      {activeScoreEvent?.sourceType === 'card' && (
-        <div className="score-card-popup" role="status" aria-label={`${activeScoreEvent.label} 화점 획득`}>
+      {(activeScoreEvent || isMultiplying) && scoringCardEvents.length > 0 && (
+        <div className="score-card-popup" role="status" aria-label="획득 화점 및 배수 정산">
           <span className="score-card-popup-title">획득 화점</span>
           <div className="score-card-popup-row">
-            {scoringCardEvents.map((event, index) => {
-              const card = game.captured.find((item) => item.id === event.sourceId)
-              if (!card) return null
-              const isActive = index === activeScoringCardIndex
-              const isScored = index <= activeScoringCardIndex
-              return (
-                <div className={`score-card-item ${isActive ? 'is-active' : ''} ${isScored ? 'is-scored' : ''}`} key={event.id}>
-                  <Card card={card} compact />
-                  <strong>+{event.baseDelta ?? 0} 화점</strong>
-                </div>
-              )
-            })}
+            <div className="score-card-list">
+              {scoringCardEvents.map((event, index) => {
+                const card = game.captured.find((item) => item.id === event.sourceId)
+                if (!card) return null
+                const isActive = index === activeScoringCardIndex
+                const isScored = index < scoredCardCount
+                return (
+                  <div className={`score-card-item ${isActive ? 'is-active' : ''} ${isScored ? 'is-scored' : ''}`} key={event.id}>
+                    <Card card={card} compact />
+                    <strong>+{event.baseDelta ?? 0} 화점</strong>
+                  </div>
+                )
+              })}
+            </div>
+            <div className={`score-popup-multiplier ${activeScoreEvent?.multDelta || isMultiplying ? 'is-active' : ''}`}>
+              <i>×</i>
+              <strong>{displayScore.mult}</strong>
+              {isMultiplying && <small>= {game.lastTurnScore}</small>}
+            </div>
           </div>
         </div>
       )}
@@ -461,12 +489,12 @@ function App() {
           <div className="goal-score">
             <strong>{displayScore.total} / {game.target}</strong>
           </div>
-          <div className="balatro-score-strip" aria-label="점수 계산">
+          <div className={`balatro-score-strip ${isMultiplying ? 'is-multiplying' : ''}`} aria-label="점수 계산">
             <span className={`chip-score ${activeScoreEvent?.baseDelta ? 'is-active' : ''}`}><i>화점</i><b key={activeScoreEvent?.baseDelta ? activeScoreEvent.id : 'base'}>{displayScore.base}</b></span>
             <em>×</em>
-            <span className="mult-score"><i>배수</i><b>{displayScore.mult}</b></span>
+            <span className={`mult-score ${activeScoreEvent?.multDelta ? 'is-active' : ''}`}><i>배수</i><b key={activeScoreEvent?.multDelta ? activeScoreEvent.id : 'mult'}>{displayScore.mult}</b></span>
           </div>
-          <div className="progress-track"><div style={{ width: `${Math.min(100, displayScore.total / game.target * 100)}%` }} /></div>
+          <div className="progress-track"><div style={{ width: `${Math.min(100, game.scoreTotal / game.target * 100)}%` }} /></div>
           <div className="turn-info"><span>진행 턴</span><strong>{Math.min(turn, 10)} / 10</strong></div>
 
           <section className="rail-won-pile">
@@ -665,9 +693,9 @@ function App() {
 
       {game.phase === 'gameover' && (
         <div className="overlay"><section className="result-modal">
-          <span className="stamp">敗</span><p>{currentBlind.name} 실패</p><h2>앤티 {game.round} · {score.total}점</h2>
+          <span className="stamp">敗</span><p>{currentBlind.name} 실패</p><h2>앤티 {game.round} · {game.scoreTotal}점</h2>
           {game.gameOverReason && <div className="game-over-reason"><strong>게임오버 사유</strong><span>{game.gameOverReason}</span></div>}
-          <p>목표 화점 {game.target}점까지 {Math.max(0, game.target - score.total)}점이 모자랐습니다.</p>
+          <p>목표 화점 {game.target}점까지 {Math.max(0, game.target - game.scoreTotal)}점이 모자랐습니다.</p>
           <button className="primary-action" onClick={() => setGame(createNewGame())}>새 판 시작</button>
         </section></div>
       )}

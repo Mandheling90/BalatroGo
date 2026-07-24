@@ -13,6 +13,7 @@ export const scorePlaybackConfig = {
   startDelayMs: 1250,
   eventDelayMs: 450,
   strongDelayMs: 620,
+  multiplyDelayMs: 700,
   countUpMs: 950,
 } as const
 

@@ -1,10 +1,9 @@
-import { scoreCaptured } from '../../game'
 import { createBonusPi } from '../core/cards/bonus'
 import { HwatuCard } from '../core/cards/types'
 import { matchPlayedCard } from '../core/rules/matching'
 import { getFloorPosition } from './floor-layout'
 import { GameState } from './types'
-import { calculateBalatroScore } from '../scoring/calculate-score'
+import { calculateBalatroScore, getSettlementScore } from '../scoring/calculate-score'
 import { prepareBlindClear } from './clear-blind'
 
 const emptyMatch = (table: HwatuCard[]) => ({ table, captured: [] as HwatuCard[], matched: false, swept: false })
@@ -63,7 +62,6 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
   const captured = [...current.captured, ...newlyCaptured]
   const nextRuleBonus = current.ruleBonus + (isShake ? 1 : 0)
   const nextRuleDetails = isShake ? [...current.ruleDetails, '흔들기 +1점'] : current.ruleDetails
-  const nextScore = scoreCaptured(captured, current.ownedCharms, nextRuleBonus, nextRuleDetails, current.goCount)
   const turnScore = calculateBalatroScore({
     cards: captured,
     previousCards: current.captured,
@@ -72,7 +70,9 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     previousRuleBonus: current.ruleBonus,
     goCount: current.goCount,
   })
-  const reachedTarget = nextScore.total >= current.target
+  const settlement = getSettlementScore(turnScore)
+  const scoreTotal = current.scoreTotal + settlement.score
+  const reachedTarget = scoreTotal >= current.target
   const nextTurnsUsed = current.turnsUsed + 1
   const failed = !reachedTarget && nextTurnsUsed >= 10
   const resultMessages: string[] = []
@@ -116,6 +116,9 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     lastRuleEffect: isPeok ? 'peok' : isJjok ? 'jjok' : null,
     turnsUsed: nextTurnsUsed,
     lastTurnAction: 'card',
+    scoreTotal,
+    lastTurnBasePoints: settlement.basePoints,
+    lastTurnScore: settlement.score,
   }
   return reachedTarget ? prepareBlindClear(result) : result
 }
