@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canChooseGo, chooseGo } from './go-stop'
+import { canChooseGo, chooseGo, chooseStop } from './go-stop'
 import { createNewGame } from './setup'
 
 describe('고 선택 가능 여부', () => {
@@ -15,5 +15,20 @@ describe('고 선택 가능 여부', () => {
   it('고를 선택해도 코인을 지급하지 않는다', () => {
     const state = { ...createNewGame(), awaitingGoStop: true, phase: 'playing' as const }
     expect(chooseGo(state).coins).toBe(state.coins)
+  })
+
+  it('스톱을 선택하면 고 횟수와 진행 기준을 초기화한다', () => {
+    const state = {
+      ...createNewGame(),
+      awaitingGoStop: true,
+      phase: 'playing' as const,
+      goCount: 2,
+      goRequiredScore: 7,
+    }
+    const result = chooseStop(state)
+
+    expect(result.awaitingGoStop).toBe(false)
+    expect(result.goCount).toBe(0)
+    expect(result.goRequiredScore).toBe(0)
   })
 })

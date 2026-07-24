@@ -33,8 +33,10 @@ export interface GameState {
   ruleDetails: string[]
   shakenMonths: number[]
   awaitingGoStop: boolean
+  awaitingGoFailureAck: boolean
   goCount: number
   goRequiredScore: number
+  lastGoChoiceYakuScore: number
   lastScoreEvents: ScoreEvent[]
   lastRuleEffect: 'peok' | 'jjok' | null
   turnsUsed: number
@@ -42,5 +44,6 @@ export interface GameState {
   scoreTotal: number
   lastTurnBasePoints: number
   lastTurnScore: number
+  lastTurnFinalMultiplier: number
   unlimitedTurns: boolean
 }

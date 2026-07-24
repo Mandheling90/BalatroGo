@@ -1,22 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDeck } from '../core/cards/deck'
 import { createNewGame } from './setup'
-import { resolveGameTurn, shouldGameOverAfterTurn } from './resolve-turn'
-
-describe('고 이후 턴 종료 판정', () => {
-  it('고 이후 다음 턴에 목표 점수를 못 내면 손패가 남아 있어도 게임오버다', () => {
-    expect(shouldGameOverAfterTurn(1, false, 6)).toBe(true)
-  })
-
-  it('고 이후 다음 턴에 목표 점수를 내면 게임오버가 아니다', () => {
-    expect(shouldGameOverAfterTurn(1, true, 6)).toBe(false)
-  })
-
-  it('고를 하지 않았다면 손패가 남아 있는 동안 계속 진행한다', () => {
-    expect(shouldGameOverAfterTurn(0, false, 6)).toBe(false)
-    expect(shouldGameOverAfterTurn(0, false, 0)).toBe(true)
-  })
-})
+import { resolveGameTurn } from './resolve-turn'
 
 describe('뻑 이후 진행', () => {
   it('뻑이 발생해도 손패와 덱을 소모하고 다음 턴을 진행할 수 있다', () => {
@@ -66,6 +51,38 @@ describe('뻑 이후 진행', () => {
     expect(secondPeok.deck).toHaveLength(0)
     expect(secondPeok.turnsUsed).toBe(2)
     expect(secondPeok.selected).toBeNull()
+  })
+
+  it('고를 선언한 상태에서 뻑이 나면 패가 남아 있어도 즉시 고 실패로 처리한다', () => {
+    const monthCards = createDeck().filter((card) => card.month === 1)
+    const nextHand = createDeck().find((card) => card.month === 2)!
+    const nextDeck = createDeck().find((card) => card.month === 3)!
+    const state = {
+      ...createNewGame(),
+      phase: 'playing' as const,
+      target: 9999,
+      scoreTotal: 100,
+      goCount: 1,
+      goRequiredScore: 3,
+      hand: [monthCards[1], nextHand],
+      deck: [monthCards[2], nextDeck],
+      table: [monthCards[0]],
+      captured: [],
+      selected: monthCards[1].id,
+    }
+
+    const result = resolveGameTurn(state)
+
+    expect(result.lastRuleEffect).toBe('peok')
+    expect(result.pendingPhase).toBeNull()
+    expect(result.lastTurnScore).toBe(0)
+    expect(result.scoreTotal).toBe(100)
+    expect(result.goCount).toBe(0)
+    expect(result.goRequiredScore).toBe(0)
+    expect(result.awaitingGoStop).toBe(false)
+    expect(result.message).toContain('고 실패')
+    expect(result.hand).toEqual([nextHand])
+    expect(result.deck).toEqual([nextDeck])
   })
 
   it('카드 제출 턴에는 덱에서 한 장만 공개한다', () => {
@@ -132,7 +149,7 @@ describe('뻑 이후 진행', () => {
     expect(result.awaitingGoStop).toBe(true)
   })
 
-  it('고를 선택한 다음 턴에 요구 고스톱 점수를 내지 못하면 게임오버가 된다', () => {
+  it('고 상태에서 덱이 소진될 때 족보가 진전되지 않으면 이번 턴을 0점 처리하고 고를 초기화한다', () => {
     const deck = createDeck()
     const state = {
       ...createNewGame(),
@@ -150,9 +167,37 @@ describe('뻑 이후 진행', () => {
 
     const result = resolveGameTurn(state)
 
-    expect(result.pendingPhase).toBe('gameover')
+    expect(result.pendingPhase).toBeNull()
     expect(result.awaitingGoStop).toBe(false)
-    expect(result.gameOverReason).toContain('고를 선택했지만')
+    expect(result.gameOverReason).toBeNull()
+    expect(result.lastTurnScore).toBe(0)
+    expect(result.scoreTotal).toBe(10)
+    expect(result.goCount).toBe(0)
+    expect(result.goRequiredScore).toBe(0)
+  })
+
+  it('고 상태에서 아무 패도 획득하지 못하면 진행 가능한 패가 남아 있어도 고 실패 확인을 기다린다', () => {
+    const deck = createDeck()
+    const state = {
+      ...createNewGame(),
+      phase: 'playing' as const,
+      target: 9999,
+      goCount: 1,
+      goRequiredScore: 99,
+      hand: [deck[0], deck[1]],
+      deck: [deck[4], deck[8]],
+      table: [],
+      captured: [],
+      selected: deck[0].id,
+    }
+
+    const result = resolveGameTurn(state)
+
+    expect(result.pendingPhase).toBeNull()
+    expect(result.awaitingGoStop).toBe(false)
+    expect(result.awaitingGoFailureAck).toBe(true)
+    expect(result.lastTurnScore).toBe(0)
+    expect(result.goCount).toBe(0)
   })
 
   it('디버그 무제한 턴에서는 10턴에 도달해도 턴 제한 게임오버가 되지 않는다', () => {

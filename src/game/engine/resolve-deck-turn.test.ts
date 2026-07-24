@@ -67,7 +67,7 @@ describe('중앙 덱 턴', () => {
     expect(resolveDeckTurn(cardTurn).lastTurnAction).toBe('deck')
   })
 
-  it('고 이후 덱 펼치기는 고 실패 판정을 하지 않고 카드 제출 기회를 유지한다', () => {
+  it('고 이후 덱을 펼쳐 아무 패도 획득하지 못하면 고 실패 확인을 기다린다', () => {
     const deck = createDeck()
     const state = {
       ...createNewGame(),
@@ -77,7 +77,7 @@ describe('중앙 덱 턴', () => {
       goCount: 1,
       goRequiredScore: 99,
       hand: [deck[4]],
-      deck: deck.slice(0, 2),
+      deck: deck.slice(0, 4),
       table: [],
       captured: [],
       turnsUsed: 2,
@@ -88,7 +88,9 @@ describe('중앙 덱 턴', () => {
     expect(result.pendingPhase).toBeNull()
     expect(result.gameOverReason).toBeNull()
     expect(result.lastTurnAction).toBe('deck')
-    expect(result.goCount).toBe(1)
+    expect(result.awaitingGoFailureAck).toBe(true)
+    expect(result.lastTurnScore).toBe(0)
+    expect(result.goCount).toBe(0)
     expect(result.hand).toHaveLength(1)
   })
 })

@@ -400,6 +400,30 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .balatro-score-strip .chip-score.is-active b {
   animation: flowerPointHit .32s cubic-bezier(.15, 1.65, .35, 1) both;
 }
+.status-score-strip {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  margin: 5px 0;
+}
+.status-score-strip span {
+  width: 100%;
+  flex: none;
+  min-height: 0;
+  padding: 3px 5px;
+  border-radius: 6px;
+  gap: 4px;
+}
+.status-score-strip i {
+  font-size: 7px;
+}
+.status-score-strip b {
+  font-size: clamp(11px, 1.3vw, 14px);
+  line-height: 1.1;
+}
+.status-score-strip > em {
+  display: none;
+}
 
 .score-event-pop {
   position: fixed;
@@ -449,11 +473,10 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   text-align: center;
 }
 .score-card-popup-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 86px;
+  display: block;
   align-items: flex-end;
   gap: clamp(4px, 1vw, 10px);
-  padding: 28px 4px 5px;
+  padding: 20px 4px 5px;
 }
 .score-card-list {
   min-width: 0;
@@ -511,34 +534,31 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   box-shadow: 0 0 15px rgba(89, 191, 255, .6);
   animation: flowerPointHit .32s .08s cubic-bezier(.15, 1.65, .35, 1) both;
 }
-.score-popup-multiplier {
-  flex: 0 0 76px;
-  min-height: 100px;
+.score-popup-equation {
+  width: min(330px, 100%);
+  margin: 10px auto 0;
+}
+.score-popup-equation.is-go-active {
+  filter: drop-shadow(0 0 12px rgba(255, 216, 94, .25));
+}
+.score-popup-calculation {
+  min-height: 24px;
   display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 4px;
-  margin-left: 10px;
-  padding-left: 14px;
-  color: #ff8c8c;
-  border-left: 1px solid rgba(255, 105, 105, .32);
+  place-items: center;
+  margin-top: 5px;
+  color: #f6cd65;
+  font-size: 11px;
+  text-align: center;
   opacity: .72;
 }
-.score-popup-multiplier i { font-size: 16px; font-style: normal; }
-.score-popup-multiplier strong { color: #ff8c8c; background: none; font-size: 25px; }
-.score-popup-multiplier small { color: #f6cd65; font-size: 11px; white-space: nowrap; }
-.score-popup-multiplier .score-go-multiplier {
+.score-popup-calculation .score-go-multiplier {
   color: #ffd85e;
   font-size: 10px;
   font-weight: 900;
   text-shadow: 0 0 12px rgba(255, 216, 94, .72);
   animation: goMultiplierHit .52s cubic-bezier(.12, 1.7, .28, 1) both;
 }
-.score-popup-multiplier.is-go-active {
-  border-left-color: rgba(255, 216, 94, .72);
-  box-shadow: inset 12px 0 24px rgba(255, 216, 94, .08);
-}
-.score-popup-multiplier .score-mult-reason {
+.score-popup-calculation .score-mult-reason {
   max-width: 110px;
   color: #ffb0a8;
   font-size: 8px;
@@ -547,11 +567,8 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   white-space: normal;
   animation: scoreReasonIn .3s cubic-bezier(.16, 1.45, .3, 1) both;
 }
-.score-popup-multiplier.is-active {
+.score-popup-calculation.is-active {
   opacity: 1;
-  animation: flowerPointHit .38s cubic-bezier(.15, 1.65, .35, 1) both;
-}
-.score-popup-multiplier.is-active strong {
   animation: flowerPointHit .38s cubic-bezier(.15, 1.65, .35, 1) both;
 }
 .mini-charm.is-triggered { animation: jokerTrigger .34s cubic-bezier(.2, 1.5, .4, 1) both; }

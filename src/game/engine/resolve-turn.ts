@@ -1,4 +1,4 @@
-import { scoreCaptured } from '../../game'
+import { evaluatePatterns } from '../../scoring'
 import { createBonusPi } from '../core/cards/bonus'
 import { HwatuCard } from '../core/cards/types'
 import { matchPlayedCard } from '../core/rules/matching'
@@ -8,9 +8,6 @@ import { calculateBalatroScore, getSettlementScore } from '../scoring/calculate-
 import { prepareBlindClear } from './clear-blind'
 
 const emptyMatch = (table: HwatuCard[]) => ({ table, captured: [] as HwatuCard[], matched: false, swept: false })
-
-export const shouldGameOverAfterTurn = (goCount: number, reachedTarget: boolean, remainingHandCount: number) =>
-  !reachedTarget && (goCount > 0 || remainingHandCount === 0)
 
 export function getDeckMatchCandidates(current: GameState, pickedMatchId?: string): HwatuCard[] {
   const played = current.hand.find((card) => card.id === current.selected)
@@ -63,24 +60,33 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
   const captured = [...current.captured, ...newlyCaptured]
   const nextRuleBonus = current.ruleBonus + (isShake ? 1 : 0)
   const nextRuleDetails = isShake ? [...current.ruleDetails, '흔들기 +1점'] : current.ruleDetails
+  const currentYakuScore = evaluatePatterns(captured).totalScore
+  const goWasActive = current.goCount > 0
+  const goSucceeded = goWasActive && currentYakuScore > current.goRequiredScore
+  const firstChoiceReady = !goWasActive
+    && currentYakuScore >= 3
+    && currentYakuScore > current.lastGoChoiceYakuScore
+  const nextTurnsUsed = current.turnsUsed + 1
+  const remainingDeck = current.deck.slice(1)
+  const hasTurnsRemaining = current.unlimitedTurns || nextTurnsUsed < 10
+  const canContinue = hasTurnsRemaining && (remainingHand.length > 0 || remainingDeck.length > 0)
+  const goFailed = goWasActive && !goSucceeded
+    && (newlyCaptured.length === 0 || remainingDeck.length === 0 || !canContinue)
   const turnScore = calculateBalatroScore({
     cards: captured,
     previousCards: current.captured,
     ownedCharmIds: current.ownedCharms,
     ruleBonus: nextRuleBonus,
     previousRuleBonus: current.ruleBonus,
-    goCount: current.goCount,
+    goCount: goSucceeded ? current.goCount : 0,
   })
   const settlement = getSettlementScore(turnScore)
-  const scoreTotal = current.scoreTotal + settlement.score
+  const settledScore = goFailed ? 0 : settlement.score
+  const scoreTotal = current.scoreTotal + settledScore
   const reachedTarget = scoreTotal >= current.target
-  const nextGoStopScore = scoreCaptured(captured, current.ownedCharms, nextRuleBonus, nextRuleDetails, current.goCount).goScore
-  const failedGo = current.goCount > 0 && nextGoStopScore < current.goRequiredScore
-  const reachedGoRequirement = nextGoStopScore >= current.goRequiredScore
-  const nextTurnsUsed = current.turnsUsed + 1
-  const failed = failedGo || (!current.unlimitedTurns && !reachedTarget && nextTurnsUsed >= 10)
-  const reachedGoChoice = !failed && !reachedTarget && reachedGoRequirement
-  const canContinueGo = (current.unlimitedTurns || nextTurnsUsed < 10) && (remainingHand.length > 0 || current.deck.length > 1)
+  const turnLimitFailed = !current.unlimitedTurns && !reachedTarget && nextTurnsUsed >= 10
+  const reachedGoChoice = !goFailed && !turnLimitFailed && !reachedTarget
+    && canContinue && (goSucceeded || firstChoiceReady)
   const resultMessages: string[] = []
   if (isPeok) resultMessages.push(`${played.month}월 뻑! 세 장이 바닥에 묶였습니다.`)
   else if (isBomb) resultMessages.push(`${played.month}월 폭탄! 손패 세 장과 바닥패를 한꺼번에 가져왔습니다.`)
@@ -100,17 +106,22 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
   const result: GameState = {
     ...current,
     hand: remainingHand,
-    deck: current.deck.slice(1),
+    deck: remainingDeck,
     table: tableAfterReveal,
     captured,
     selected: null,
     phase: 'playing',
-    pendingPhase: failed ? 'gameover' : null,
-    gameOverReason: failedGo
-      ? `고를 선택했지만 고스톱 점수 ${current.goRequiredScore}점을 만들지 못했습니다.`
-      : failed ? `10턴을 모두 사용했지만 목표 화점 ${current.target}점을 달성하지 못했습니다.` : null,
-    awaitingGoStop: reachedGoChoice && canContinueGo,
-    message: failedGo ? `고 실패! ${capturedCopy}` : failed ? `마지막 턴이 끝났습니다. ${capturedCopy}` : capturedCopy,
+    pendingPhase: turnLimitFailed ? 'gameover' : null,
+    gameOverReason: turnLimitFailed ? `10턴을 모두 사용했지만 목표 화점 ${current.target}점을 달성하지 못했습니다.` : null,
+    awaitingGoStop: reachedGoChoice,
+    awaitingGoFailureAck: goFailed,
+    message: goFailed
+      ? `고 실패! 이번 턴 획득 화점은 0점이며 고 상태를 초기화합니다. ${capturedCopy}`
+      : turnLimitFailed
+        ? `마지막 턴이 끝났습니다. ${capturedCopy}`
+        : goSucceeded
+          ? `고 성공! 족보 점수가 ${current.goRequiredScore}점에서 ${currentYakuScore}점으로 올랐습니다. ${capturedCopy}`
+          : capturedCopy,
     lastRevealed: revealed.map((card) => card.id),
     lastCapturedMonths: Array.from(new Set([...(playerMatch.matched ? [played.month] : []), ...(deckMatch.matched && firstRevealed ? [firstRevealed.month] : [])])),
     lastPlayedId: playerMatch.matched ? null : played.id,
@@ -120,13 +131,17 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string, pick
     ruleBonus: nextRuleBonus,
     ruleDetails: nextRuleDetails,
     shakenMonths: isShake ? [...current.shakenMonths, played.month] : current.shakenMonths,
-    lastScoreEvents: turnScore.events,
+    lastScoreEvents: goFailed ? [] : turnScore.events,
     lastRuleEffect: isPeok ? 'peok' : isJjok ? 'jjok' : null,
     turnsUsed: nextTurnsUsed,
     lastTurnAction: 'card',
     scoreTotal,
-    lastTurnBasePoints: settlement.basePoints,
-    lastTurnScore: settlement.score,
+    lastTurnBasePoints: goFailed ? 0 : settlement.basePoints,
+    lastTurnScore: settledScore,
+    lastTurnFinalMultiplier: goFailed ? 1 : turnScore.finalMultiplier,
+    goCount: goFailed ? 0 : current.goCount,
+    goRequiredScore: goFailed ? 0 : current.goRequiredScore,
+    lastGoChoiceYakuScore: reachedGoChoice || goFailed ? currentYakuScore : current.lastGoChoiceYakuScore,
   }
-  return !failed && reachedTarget ? prepareBlindClear(result) : result
+  return !turnLimitFailed && !goFailed && reachedTarget ? prepareBlindClear(result) : result
 }

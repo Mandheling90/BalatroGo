@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CardKind, HwatuCard } from '../core/cards/types'
 import { calculateBalatroScore, getCardPoints, getSettlementScore } from './calculate-score'
+import { getGoFinalMultiplier } from './score-config'
 
 const card = (definitionId: string, kind: CardKind, month = 1, piValue?: number): HwatuCard => ({
   id: `instance-${definitionId}`,
@@ -56,9 +57,13 @@ describe('Balatro-style score calculation', () => {
     const result = calculateBalatroScore({ cards, goCount: 2, previousGoCount: 1 })
     expect(result.basePoints).toBe(30)
     expect(result.multiplier).toBe(4)
-    expect(result.finalMultiplier).toBe(2)
-    expect(result.total).toBe(240)
-    expect(result.events.at(-1)).toMatchObject({ sourceType: 'go', xMult: 2 })
+    expect(result.finalMultiplier).toBe(4)
+    expect(result.total).toBe(480)
+    expect(result.events.at(-1)).toMatchObject({ sourceType: 'go', xMult: 4 })
+  })
+
+  it('고 배수를 설정 데이터에서 1, 2, 4, 8 순서로 가져온다', () => {
+    expect([0, 1, 2, 3].map(getGoFinalMultiplier)).toEqual([1, 2, 4, 8])
   })
 
   it('applies a completed yaku multiplier only to points earned in this settlement', () => {

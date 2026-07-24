@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CardKind, charms, HwatuCard, scoreCaptured } from './game'
 import { evaluatePatterns } from './scoring'
 import { Card } from './components/game/HwatuCard'
-import { GoStopModal, MatchChoiceModal, RulesModal } from './components/game/GameModals'
+import { GoFailureModal, GoStopModal, MatchChoiceModal, RulesModal } from './components/game/GameModals'
 import { blindDefinitions, getBlind } from './game/data/blinds'
 import { getFloorPosition } from './game/engine/floor-layout'
 import { getDeckMatchCandidates, resolveGameTurn } from './game/engine/resolve-turn'
 import { resolveDeckTurn } from './game/engine/resolve-deck-turn'
 import { createNewGame, dealRound } from './game/engine/setup'
 import { buyShopCharm, leaveShop, rerollShop } from './game/engine/shop'
-import { canChooseGo, chooseGo } from './game/engine/go-stop'
+import { canChooseGo, chooseGo, chooseStop } from './game/engine/go-stop'
 import type { BlindIndex, GameState } from './game/engine/types'
 import { scorePlaybackConfig } from './game/scoring/score-config'
 import type { ScoreEvent } from './game/scoring/types'
@@ -74,7 +74,9 @@ function App() {
     () => scoreCaptured(game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails, game.goCount),
     [game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails, game.goCount],
   )
-  const completedPatterns = useMemo(() => evaluatePatterns(game.captured).completedPatterns, [game.captured])
+  const patternEvaluation = useMemo(() => evaluatePatterns(game.captured), [game.captured])
+  const completedPatterns = patternEvaluation.completedPatterns
+  const currentYakuScore = patternEvaluation.totalScore
   const scoringCardEvents = game.lastScoreEvents.filter((event) => event.sourceType === 'card')
   const scoreTurnKey = game.lastScoreEvents.map((event) => event.id).join('|')
   const isSettlementPending = game.lastScoreEvents.length > 0 && completedSettlementKey !== scoreTurnKey
@@ -158,22 +160,20 @@ function App() {
       setIsScorePlaying(false)
       setIsMultiplying(false)
       setIsGoMultiplying(false)
-      setDisplayScore({ base: game.lastTurnBasePoints, mult: score.multiplier, xMult: score.finalMultiplier, total: game.scoreTotal })
+      setDisplayScore({ base: game.lastTurnBasePoints, mult: score.multiplier, xMult: game.lastTurnFinalMultiplier, total: game.scoreTotal })
       return
     }
     if (capturePlayback.turnKey !== scoreTurnKey || capturePlayback.pendingIds.length > 0) return
     setIsScorePlaying(true)
     const baseDelta = events.reduce((sum, event) => sum + (event.baseDelta ?? 0), 0)
     const multDelta = events.reduce((sum, event) => sum + (event.multDelta ?? 0), 0)
-    const hasGoEvent = events.some((event) => event.sourceType === 'go')
-    const goRatio = game.goCount > 0 ? (game.goCount + 1) / Math.max(1, game.goCount) : 1
     let staged = {
       base: game.lastTurnBasePoints - baseDelta,
       mult: score.multiplier - multDelta,
-      xMult: hasGoEvent ? score.finalMultiplier / goRatio : score.finalMultiplier,
+      xMult: 1,
     }
     const startingTotal = game.scoreTotal - game.lastTurnScore
-    const hasGoMultiplier = score.finalMultiplier > 1
+    const hasGoMultiplier = game.lastTurnFinalMultiplier > 1
     setDisplayScore({ ...staged, total: startingTotal })
     setActiveScoreEvent(null)
     setScoredCardCount(0)
@@ -226,7 +226,7 @@ function App() {
       setDisplayScore({
         base: game.lastTurnBasePoints,
         mult: score.multiplier,
-        xMult: score.finalMultiplier,
+        xMult: game.lastTurnFinalMultiplier,
         total: game.scoreTotal,
       })
       setIsScorePlaying(false)
@@ -244,7 +244,7 @@ function App() {
       setIsMultiplying(false)
       setIsGoMultiplying(false)
     }
-  }, [capturePlayback, game.goCount, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnScore, game.scoreTotal, score.finalMultiplier, score.multiplier, scoreTurnKey])
+  }, [capturePlayback, game.lastScoreEvents, game.lastTurnBasePoints, game.lastTurnFinalMultiplier, game.lastTurnScore, game.scoreTotal, score.multiplier, scoreTurnKey])
 
   useEffect(() => {
     if (isResolving || isScorePlaying || !queuedCardSelection.current) return
@@ -340,7 +340,7 @@ function App() {
   }
 
   const playTurn = () => {
-    if (!game.selected || game.phase !== 'playing' || game.awaitingGoStop || turnLimitReached || isResolving || isScorePlaying) return
+    if (!game.selected || game.phase !== 'playing' || game.awaitingGoStop || game.awaitingGoFailureAck || turnLimitReached || isResolving || isScorePlaying) return
     const played = game.hand.find((card) => card.id === game.selected)
     if (!played) return
     const matches = game.table.filter((card) => card.month === played.month)
@@ -352,7 +352,7 @@ function App() {
   }
 
   const playDeckTurn = () => {
-    if (game.phase !== 'playing' || game.awaitingGoStop || turnLimitReached || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying) return
+    if (game.phase !== 'playing' || game.awaitingGoStop || game.awaitingGoFailureAck || turnLimitReached || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying) return
     setMatchChoice(null)
     queuedCardSelection.current = null
     setIsResolving(true)
@@ -391,8 +391,10 @@ function App() {
         ruleDetails: [],
         shakenMonths: [],
         awaitingGoStop: false,
+        awaitingGoFailureAck: false,
         goCount: 0,
-        goRequiredScore: 3,
+        goRequiredScore: 0,
+        lastGoChoiceYakuScore: 0,
         lastScoreEvents: [],
         lastRuleEffect: null,
         turnsUsed: 0,
@@ -400,6 +402,7 @@ function App() {
         scoreTotal: 0,
         lastTurnBasePoints: 0,
         lastTurnScore: 0,
+        lastTurnFinalMultiplier: 1,
       }
     })
   }
@@ -429,6 +432,7 @@ function App() {
 
   const exitShop = () => setGame(leaveShop)
   const continueGo = () => setGame(chooseGo)
+  const stopGo = () => setGame(chooseStop)
 
   const capturedGroups = [
     { key: 'gwang' as const, label: '광', score: score.gwang, patterns: patternLabels(['three-brights', 'rain-three-brights', 'four-brights', 'five-brights']) },
@@ -462,21 +466,28 @@ function App() {
                 )
               })}
             </div>
-            <div className={`score-popup-multiplier ${activeScoreEvent?.multDelta || isMultiplying || isGoMultiplying ? 'is-active' : ''} ${isGoMultiplying ? 'is-go-active' : ''}`}>
-              <i>×</i>
-              <strong key={activeScoreEvent?.multDelta ? activeScoreEvent.id : isMultiplying ? 'multiply' : 'multiplier'}>
-                {displayScore.mult}
-              </strong>
-              {activeScoreEvent?.multDelta
-                ? <small className="score-mult-reason" key={`reason-${activeScoreEvent.id}`}>
-                    {activeScoreEvent.label} · 배수 +{activeScoreEvent.multDelta}
-                  </small>
-                : isMultiplying
-                  ? <small>= {game.lastTurnBasePoints * displayScore.mult}</small>
-                  : isGoMultiplying && <small className="score-go-multiplier">
-                      {game.goCount}고 ×{displayScore.xMult} · = {game.lastTurnScore}
-                    </small>}
-            </div>
+          </div>
+          <div className={`balatro-score-strip score-popup-equation ${isMultiplying ? 'is-multiplying' : ''} ${isGoMultiplying ? 'is-go-active' : ''}`}>
+            <span className={`chip-score ${activeScoreEvent?.baseDelta ? 'is-active' : ''}`}>
+              <i>획득 화점</i>
+              <b key={activeScoreEvent?.baseDelta ? activeScoreEvent.id : 'popup-base'}>{displayScore.base}</b>
+            </span>
+            <em>×</em>
+            <span className={`mult-score ${activeScoreEvent?.multDelta ? 'is-active' : ''}`}>
+              <i>배수</i>
+              <b key={activeScoreEvent?.multDelta ? activeScoreEvent.id : 'popup-mult'}>{displayScore.mult}</b>
+            </span>
+          </div>
+          <div className={`score-popup-calculation ${activeScoreEvent?.multDelta || isMultiplying || isGoMultiplying ? 'is-active' : ''} ${isGoMultiplying ? 'is-go-active' : ''}`}>
+            {activeScoreEvent?.multDelta
+              ? <small className="score-mult-reason" key={`reason-${activeScoreEvent.id}`}>
+                  {activeScoreEvent.label} · 배수 +{activeScoreEvent.multDelta}
+                </small>
+              : isMultiplying
+                ? <small>= {game.lastTurnBasePoints * displayScore.mult}</small>
+                : isGoMultiplying && <small className="score-go-multiplier">
+                    {game.goCount}고 ×{displayScore.xMult} · = {game.lastTurnScore}
+                  </small>}
           </div>
         </div>
       )}
@@ -571,10 +582,11 @@ function App() {
           <div className="goal-score">
             <strong>{displayScore.total} / {game.target}</strong>
           </div>
-          <div className={`balatro-score-strip ${isMultiplying ? 'is-multiplying' : ''}`} aria-label="점수 계산">
-            <span className={`chip-score ${activeScoreEvent?.baseDelta ? 'is-active' : ''}`}><i>화점</i><b key={activeScoreEvent?.baseDelta ? activeScoreEvent.id : 'base'}>{displayScore.base}</b></span>
-            <em>×</em>
-            <span className={`mult-score ${activeScoreEvent?.multDelta ? 'is-active' : ''}`}><i>배수</i><b key={activeScoreEvent?.multDelta ? activeScoreEvent.id : 'mult'}>{displayScore.mult}</b></span>
+          <div className="balatro-score-strip status-score-strip" aria-label="누적 화점과 현재 고">
+            <span className="chip-score"><i>누적 화점</i><b>{displayScore.total}</b></span>
+            <em>·</em>
+            <span className="xmult-score"><i>현재 고</i><b>{game.goCount}고</b></span>
+            <span className="mult-score"><i>현재 족보 배수</i><b>×{score.multiplier}</b></span>
           </div>
           <div className="progress-track"><div style={{ width: `${Math.min(100, game.scoreTotal / game.target * 100)}%` }} /></div>
           <div className="turn-info"><span>진행 턴{game.unlimitedTurns ? ' · 디버그' : ''}</span><strong>{game.unlimitedTurns ? `${turn} / ∞` : `${Math.min(turn, 10)} / 10`}</strong></div>
@@ -582,7 +594,7 @@ function App() {
           <section className="rail-won-pile">
             <div className="won-pile-heading">
               <span className="eyebrow">획득패</span>
-              <span className="go-stop-score">고스톱 점수 <strong>{score.goScore}점</strong></span>
+              <span className="go-stop-score">고스톱 족보 <strong>{currentYakuScore}점</strong></span>
             </div>
             <div className="won-groups">
               {capturedGroups.map((group) => {
@@ -612,7 +624,7 @@ function App() {
                 className="center-deck"
                 type="button"
                 aria-label={`남은 패 ${game.deck.length}장. 클릭하면 한 턴을 사용해 두 장을 바닥에 놓습니다.`}
-                disabled={game.phase !== 'playing' || game.awaitingGoStop || turnLimitReached || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying}
+                disabled={game.phase !== 'playing' || game.awaitingGoStop || game.awaitingGoFailureAck || turnLimitReached || !game.deck.length || game.lastTurnAction === 'deck' || isResolving || isScorePlaying}
                 onClick={playDeckTurn}
               >
                 <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
@@ -734,13 +746,13 @@ function App() {
 
           <section className="hand-zone">
             <div className="player-hand">
-              {sortedHand.map((card) => <Card key={card.id} card={card} selected={game.selected === card.id} onClick={() => !game.awaitingGoStop && selectHandCard(card.id)} />)}
+              {sortedHand.map((card) => <Card key={card.id} card={card} selected={game.selected === card.id} onClick={() => !game.awaitingGoStop && !game.awaitingGoFailureAck && selectHandCard(card.id)} />)}
             </div>
             <div className="hand-sort" aria-label="손패 정렬">
               <button className={handSort === 'month' ? 'active' : ''} aria-pressed={handSort === 'month'} onClick={() => setHandSort('month')}>월순</button>
               <button className={handSort === 'kind' ? 'active' : ''} aria-pressed={handSort === 'kind'} onClick={() => setHandSort('kind')}>종류순</button>
             </div>
-            <button className="primary-action play-turn" disabled={!game.selected || game.phase !== 'playing' || isResolving || isScorePlaying || game.awaitingGoStop} onClick={playTurn}>
+            <button className="primary-action play-turn" disabled={!game.selected || game.phase !== 'playing' || isResolving || isScorePlaying || game.awaitingGoStop || game.awaitingGoFailureAck} onClick={playTurn}>
               카드 제출
             </button>
           </section>
@@ -817,10 +829,15 @@ function App() {
 
       {game.awaitingGoStop && canChooseGo(game) && !isSettlementPending && (
         <GoStopModal
-          score={score.goScore}
+          score={currentYakuScore}
           goCount={game.goCount}
           onGo={continueGo}
+          onStop={stopGo}
         />
+      )}
+
+      {game.awaitingGoFailureAck && !isResolving && !isSettlementPending && (
+        <GoFailureModal onConfirm={() => setGame((current) => ({ ...current, awaitingGoFailureAck: false }))} />
       )}
 
       {selectedCharm && <div className="overlay charm-detail-overlay" onClick={() => setSelectedCharmId(null)}><section className="charm-detail-modal" onClick={(event) => event.stopPropagation()} style={{ '--accent': selectedCharm.accent } as React.CSSProperties}>

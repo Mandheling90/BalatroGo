@@ -18,4 +18,7 @@ export const scorePlaybackConfig = {
   countUpMs: 950,
 } as const
 
-export const getGoFinalMultiplier = (goCount: number) => Math.max(1, goCount)
+export const goMultiplierConfig = [1, 2, 4, 8] as const
+
+export const getGoFinalMultiplier = (goCount: number) =>
+  goMultiplierConfig[goCount] ?? 2 ** goCount

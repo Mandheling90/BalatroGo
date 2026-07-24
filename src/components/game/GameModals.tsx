@@ -1,18 +1,33 @@
 import type { HwatuCard } from '../../game/core/cards/types'
+import { getGoFinalMultiplier } from '../../game/scoring/score-config'
 import { Card } from './HwatuCard'
 
-export function GoStopModal({ score, goCount, onGo }: {
+export function GoStopModal({ score, goCount, onGo, onStop }: {
   score: number
   goCount: number
   onGo: () => void
+  onStop: () => void
 }) {
   return <div className="overlay go-stop-overlay"><section className="go-stop-modal">
-    <span className="eyebrow">목표 점수 달성</span>
-    <h2>고</h2>
-    <p>현재 {score}점 · {goCount}고</p>
-    <div className="go-risk-warning"><strong>주의</strong> 고를 선택하면 다음 턴에 {score + 1}점을 달성해야 하며, 미달하면 게임오버됩니다.</div>
+    <span className="eyebrow">족보 점수 진전</span>
+    <h2>고 · 스톱</h2>
+    <p>현재 족보 {score}점 · {goCount}고</p>
+    <div className="go-risk-warning"><strong>주의</strong> 고를 선택한 뒤 족보 총점이 오르지 않은 채 판을 더 진행할 수 없으면, 그 턴의 화점은 0점 처리됩니다.</div>
+    <div className="go-stop-actions">
+      <button className="go-button" onClick={onGo}>고<span>{goCount + 1}고 · 성공 정산 ×{getGoFinalMultiplier(goCount + 1)} · 족보 진전 필요</span></button>
+      <button className="stop-button" onClick={onStop}>스톱<span>0고 · ×1 상태로 다음 턴</span></button>
+    </div>
+  </section></div>
+}
+
+export function GoFailureModal({ onConfirm }: { onConfirm: () => void }) {
+  return <div className="overlay go-stop-overlay"><section className="go-stop-modal go-failure-modal">
+    <span className="eyebrow">고 실패</span>
+    <h2>획득 실패</h2>
+    <p>이번 턴에 획득한 패가 없어 고에 실패했습니다.</p>
+    <div className="go-risk-warning"><strong>결과</strong> 이번 턴 화점은 0점이며, 고 횟수와 고 진행 상태가 초기화되었습니다.</div>
     <div className="go-stop-actions stop-only">
-      <button className="go-button" onClick={onGo}>고<span>{goCount + 1}고 · {goCount + 1 < 2 ? '배수 효과 없음' : `다음 정산 ×${goCount + 1}`} · 다음 턴 득점 필수</span></button>
+      <button className="stop-button" onClick={onConfirm}>확인<span>다음 턴 계속하기</span></button>
     </div>
   </section></div>
 }
