@@ -2,6 +2,15 @@ import type { AnimationEvent, CSSProperties } from 'react'
 import type { HwatuCard } from '../../game/core/cards/types'
 import { getCardPoints } from '../../game/scoring/calculate-score'
 
+const kindLabels = {
+  gwang: '광',
+  animal: '열끗',
+  'ribbon-red': '홍단',
+  'ribbon-blue': '청단',
+  'ribbon-plain': '띠',
+  pi: '피',
+} as const
+
 interface HwatuCardViewProps {
   card: HwatuCard
   selected?: boolean
@@ -58,6 +67,8 @@ export function Card({
       </>}
       <span className="plant">{card.symbol}</span>
       <span className="flower">{card.flower}</span>
+      {!isBonusPi && <span className="card-title">{card.title}</span>}
+      {!isBonusPi && <span className="kind">{kindLabels[card.kind]}</span>}
       {isBonusPi && <span className="bonus-pi-mark"><b>+1 피</b><small>{card.bonusEvent ?? '보너스'}</small></span>}
     </Tag>
   )

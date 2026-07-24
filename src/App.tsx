@@ -15,6 +15,7 @@ import { scorePlaybackConfig } from './game/scoring/score-config'
 import type { ScoreEvent } from './game/scoring/types'
 
 type HandSort = 'month' | 'kind'
+type CardDisplayMode = 'image' | 'text'
 
 const handKindOrder: Record<CardKind, number> = {
   gwang: 0,
@@ -41,6 +42,7 @@ function App() {
     hiddenFloorIds?: string[]
   } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
+  const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>('image')
   const [isResolving, setIsResolving] = useState(false)
   const [isScorePlaying, setIsScorePlaying] = useState(false)
   const [isMultiplying, setIsMultiplying] = useState(false)
@@ -424,7 +426,7 @@ function App() {
   ]
 
   return (
-    <main className={`game-shell capture-game ${isResolving ? 'is-resolving' : ''} ${isScorePlaying ? 'is-score-playing' : ''} ${matchChoice?.source === 'deck' ? 'is-deck-choice-sequence' : ''} ${activeScoreEvent?.emphasis === 'critical' || activeScoreEvent?.sourceType === 'yaku' ? 'score-shake' : ''}`}>
+    <main className={`game-shell capture-game card-mode-${cardDisplayMode} ${isResolving ? 'is-resolving' : ''} ${isScorePlaying ? 'is-score-playing' : ''} ${matchChoice?.source === 'deck' ? 'is-deck-choice-sequence' : ''} ${activeScoreEvent?.emphasis === 'critical' || activeScoreEvent?.sourceType === 'yaku' ? 'score-shake' : ''}`}>
       <div className="rotate-device" aria-hidden="true">
         <div className="rotate-phone">↻</div>
         <strong>가로로 돌려주세요</strong>
@@ -494,7 +496,12 @@ function App() {
           <span className="brand-mark">花</span>
           <div><h1>화투록</h1><p>네 장을 맞추고, 점수패를 모아라</p></div>
         </div>
-        <button className="text-button" onClick={() => setShowRules(true)}>게임 방법</button>
+        <div className="topbar-actions">
+          <button className="text-button" onClick={() => setCardDisplayMode((mode) => mode === 'image' ? 'text' : 'image')}>
+            카드: {cardDisplayMode === 'image' ? '그림' : '텍스트'}
+          </button>
+          <button className="text-button" onClick={() => setShowRules(true)}>게임 방법</button>
+        </div>
       </header>}
 
       {game.phase === 'blind' ? (
@@ -543,7 +550,12 @@ function App() {
       ) : (
       <div className="capture-layout">
         <aside className="status-rail panel">
-          <div className="round-label">ANTE {game.round} · {currentBlind.english}</div>
+          <div className="status-mode-row">
+            <div className="round-label">ANTE {game.round} · {currentBlind.english}</div>
+            <button type="button" onClick={() => setCardDisplayMode((mode) => mode === 'image' ? 'text' : 'image')}>
+              {cardDisplayMode === 'image' ? '텍스트 카드' : '그림 카드'}
+            </button>
+          </div>
           <div className="goal-score">
             <strong>{displayScore.total} / {game.target}</strong>
           </div>

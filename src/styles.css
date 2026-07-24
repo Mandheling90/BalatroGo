@@ -15,6 +15,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .brand p { margin: 2px 0 0; color: #928f81; font-size: 10px; letter-spacing: .18em; }
 .text-button { color: #c9c3b1; border: 1px solid #474a42; border-radius: 99px; padding: 9px 16px; background: rgba(255,255,255,.03); cursor: pointer; }
 .text-button:hover { background: rgba(255,255,255,.09); color: white; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
 
 .table { display: grid; grid-template-columns: 270px 1fr; gap: 24px; max-width: 1460px; margin: 0 auto; padding: 26px 34px 34px; min-height: calc(100vh - 86px); }
 .panel { background: rgba(13, 28, 22, .82); border: 1px solid rgba(230, 216, 176, .14); box-shadow: 0 24px 70px rgba(0,0,0,.3); border-radius: 18px; }
@@ -69,6 +70,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .plant { position: absolute; left: 50%; top: 19%; transform: translateX(-50%); font-family: 'Gowun Batang'; font-size: clamp(40px, 5vw, 68px); color: #141913; z-index: 1; text-shadow: 2px 2px 0 rgba(255,255,255,.2); }
 .flower { position: absolute; top: 56%; left: 9px; z-index: 3; color: #f6ead2; font-family: 'Gowun Batang'; font-weight: 700; font-size: 11px; }
 .kind { position: absolute; right: 6px; top: 6px; z-index: 3; padding: 3px 5px; background: #141813; color: #f8e6b6; font-size: 9px; border-radius: 3px; }
+.card-title { display: none; }
 .chip { position: absolute; right: 7px; bottom: 7px; z-index: 4; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; border: 2px solid #f0d174; background: #172019; color: #f4d678; font-size: 10px; font-weight: 800; }
 .actions { display: flex; gap: 12px; margin-top: 13px; }
 .actions button, .next-round, .result-modal button { min-height: 52px; border-radius: 9px; padding: 0 24px; cursor: pointer; font-weight: 800; border: 0; }
@@ -177,6 +179,18 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 /* 누적 획득형 고스톱 보드 */
 .capture-layout { min-height: 100vh; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 22px; max-width: 1500px; margin: 0 auto; padding: 22px 30px; }
 .status-rail { position: sticky; top: 18px; align-self: start; min-height: calc(100vh - 44px); padding: 23px; }
+.status-mode-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.status-mode-row button {
+  padding: 4px 7px;
+  color: #d8c889;
+  background: #101a15;
+  border: 1px solid #4b5145;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 7px;
+  white-space: nowrap;
+}
+.status-mode-row button:hover { color: #fff2b7; border-color: #827650; }
 .rail-game-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -5px -4px 16px; padding-bottom: 12px; border-bottom: 1px solid #2b3831; }
 .rail-logo { display: flex; align-items: center; gap: 7px; }
 .rail-logo span { width: 28px; height: 32px; display: grid; place-items: center; color: #16110b; background: #df4b39; border: 2px solid #e9ddc3; box-shadow: 2px 2px 0 #000; font: 800 14px serif; transform: rotate(-3deg); }
@@ -690,6 +704,61 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
 .capture-game .hwatu-card::after { display: none; }
 .capture-game .hwatu-card .plant,
 .capture-game .hwatu-card .flower { display: none; }
+.capture-game .hwatu-card .kind,
+.capture-game .hwatu-card .card-title { display: none; }
+.capture-game.card-mode-text .hwatu-card:not(.bonus-pi) {
+  background-color: #f3ead3;
+  background-image: linear-gradient(160deg, #fffaf0, #e4d7b9);
+  border: 3px solid #161b17;
+  box-shadow: 0 0 0 1px #c2b58f inset, 0 10px 18px rgba(0, 0, 0, .42);
+}
+.capture-game.card-mode-text .hwatu-card:not(.bonus-pi) .plant {
+  display: block;
+  left: 50%;
+  top: 22%;
+  color: #182019;
+  font-size: clamp(26px, 3.8vw, 48px);
+  text-shadow: 1px 1px 0 rgba(255,255,255,.65);
+}
+.capture-game.card-mode-text .hwatu-card:not(.bonus-pi) .flower {
+  display: block;
+  left: 50%;
+  top: 54%;
+  width: 90%;
+  transform: translateX(-50%);
+  color: #4c594e;
+  font-size: clamp(7px, .85vw, 11px);
+  text-align: center;
+}
+.capture-game.card-mode-text .hwatu-card:not(.bonus-pi) .card-title {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  z-index: 4;
+  display: block;
+  width: 92%;
+  transform: translateX(-50%);
+  color: var(--card-accent);
+  font-size: clamp(7px, .9vw, 12px);
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+}
+.capture-game.card-mode-text .hwatu-card:not(.bonus-pi) .kind {
+  top: auto;
+  right: 4px;
+  bottom: 4px;
+  display: block;
+  color: #fff4cf;
+  background: #182019;
+}
+.capture-game.card-mode-text .hwatu-card:not(.bonus-pi) .flower-point {
+  right: auto;
+  left: 4px;
+}
+.capture-game.card-mode-text .hwatu-card.compact:not(.bonus-pi) .plant { font-size: 23px; }
+.capture-game.card-mode-text .hwatu-card.compact:not(.bonus-pi) .flower { font-size: 6px; }
+.capture-game.card-mode-text .hwatu-card.compact:not(.bonus-pi) .card-title { bottom: 18%; font-size: 6px; }
 .capture-game .hwatu-card.bonus-pi { --bonus-color: #b9e96b; background: linear-gradient(145deg, #f5ffe5 0%, var(--bonus-color) 100%); border-color: color-mix(in srgb, var(--bonus-color) 65%, #101713); box-shadow: 0 5px 12px rgba(0,0,0,.4), inset 0 0 0 2px rgba(255,255,255,.42); }
 .capture-game .hwatu-card.bonus-ttadak { --bonus-color: #73d9f4; }
 .capture-game .hwatu-card.bonus-jjok { --bonus-color: #61e2b1; }
