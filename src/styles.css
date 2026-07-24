@@ -412,7 +412,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   gap: clamp(4px, 1vw, 10px);
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 12px 4px 5px;
+  padding: 28px 4px 5px;
 }
 .score-card-item:first-child { margin-left: auto; }
 .score-card-item:last-child { margin-right: auto; }
@@ -721,6 +721,7 @@ button:focus-visible { outline: 3px solid #ffe487; outline-offset: 3px; }
   animation-delay: var(--deal-delay);
   will-change: left, top, transform, opacity;
 }
+.loose-card.deck-choice-preview { z-index: 35; pointer-events: none; }
 .loose-card.dealt-from-deck.captured-reveal-flight {
   animation-name: dealFromDeck, hideCapturedReveal;
   animation-duration: .8s, .01s;

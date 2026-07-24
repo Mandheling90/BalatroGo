@@ -5,7 +5,7 @@ import { Card } from './components/game/HwatuCard'
 import { MatchChoiceModal, RulesModal } from './components/game/GameModals'
 import { blindDefinitions, getBlind } from './game/data/blinds'
 import { getFloorPosition } from './game/engine/floor-layout'
-import { resolveGameTurn } from './game/engine/resolve-turn'
+import { getDeckMatchCandidates, resolveGameTurn } from './game/engine/resolve-turn'
 import { resolveDeckTurn } from './game/engine/resolve-deck-turn'
 import { createNewGame, dealRound } from './game/engine/setup'
 import { buyShopCharm, leaveShop, rerollShop } from './game/engine/shop'
@@ -31,7 +31,13 @@ function App() {
   const [game, setGame] = useState<GameState>(createNewGame)
   const [showRules, setShowRules] = useState(false)
   const [selectedCharmId, setSelectedCharmId] = useState<string | null>(null)
-  const [matchChoice, setMatchChoice] = useState<{ playedId: string; matchIds: string[] } | null>(null)
+  const [matchChoice, setMatchChoice] = useState<{
+    source: 'hand' | 'deck'
+    playedId: string
+    matchIds: string[]
+    handMatchId?: string
+    ready?: boolean
+  } | null>(null)
   const [handSort, setHandSort] = useState<HandSort>('month')
   const [isResolving, setIsResolving] = useState(false)
   const [isScorePlaying, setIsScorePlaying] = useState(false)
@@ -39,6 +45,7 @@ function App() {
   const [activeScoreEvent, setActiveScoreEvent] = useState<ScoreEvent | null>(null)
   const [displayScore, setDisplayScore] = useState({ base: 0, mult: 1, xMult: 1, total: 0 })
   const queuedCardSelection = useRef<string | null>(null)
+  const skipRevealedDealId = useRef<string | null>(null)
   const score = useMemo(
     () => scoreCaptured(game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails, game.goCount),
     [game.captured, game.ownedCharms, game.ruleBonus, game.ruleDetails, game.goCount],
@@ -150,7 +157,10 @@ function App() {
         const eased = 1 - Math.pow(1 - progress, 3)
         setDisplayScore((current) => ({ ...current, total: Math.round(startingTotal + (score.total - startingTotal) * eased) }))
         if (progress < 1) timers.push(window.requestAnimationFrame(tick))
-        else setIsScorePlaying(false)
+        else {
+          setIsScorePlaying(false)
+          setIsResolving(false)
+        }
       }
       timers.push(window.requestAnimationFrame(tick))
     }, elapsed + scorePlaybackConfig.strongDelayMs))
@@ -163,6 +173,7 @@ function App() {
         total: score.total,
       })
       setIsScorePlaying(false)
+      setIsResolving(false)
     }, elapsed + scorePlaybackConfig.strongDelayMs + scorePlaybackConfig.countUpMs + 120))
     return () => {
       timers.forEach((timer) => {
@@ -186,8 +197,10 @@ function App() {
   }, [isResolving, isScorePlaying])
 
   useEffect(() => {
-    if (!isResolving || !game.lastSubmittedId || game.lastCapturedIds.length || game.lastScoreEvents.length) return
-    const delay = game.lastRuleEffect === 'peok' ? 1600 : 1250
+    if (!isResolving || game.lastCapturedIds.length || game.lastScoreEvents.length) return
+    const isDeckPlacement = game.lastTurnAction === 'deck'
+    if (!isDeckPlacement && !game.lastSubmittedId) return
+    const delay = isDeckPlacement ? 2150 : game.lastRuleEffect === 'peok' ? 1600 : 1250
     const timer = window.setTimeout(() => setIsResolving(false), delay)
     return () => window.clearTimeout(timer)
   }, [
@@ -195,10 +208,30 @@ function App() {
     game.lastRuleEffect,
     game.lastScoreEvents.length,
     game.lastSubmittedId,
+    game.lastTurnAction,
     isResolving,
   ])
 
-  const resolveTurn = (pickedMatchId?: string) => {
+  const resolveTurn = (pickedMatchId?: string, pickedDeckMatchId?: string) => {
+    const deckCandidates = getDeckMatchCandidates(game, pickedMatchId)
+    if (!pickedDeckMatchId && deckCandidates.length === 2 && game.deck[0]) {
+      const revealedId = game.deck[0].id
+      setIsResolving(true)
+      setMatchChoice({
+        source: 'deck',
+        playedId: revealedId,
+        matchIds: deckCandidates.map((card) => card.id),
+        handMatchId: pickedMatchId,
+        ready: false,
+      })
+      window.setTimeout(() => {
+        setMatchChoice((current) => current?.source === 'deck' && current.playedId === revealedId
+          ? { ...current, ready: true }
+          : current)
+        setIsResolving(false)
+      }, 1250)
+      return
+    }
     const floor = document.querySelector<HTMLElement>('.floor-spread')
     const selectedCard = document.querySelector<HTMLElement>('.player-hand .hwatu-card[aria-pressed="true"]')
     const previewPlayed = game.hand.find((card) => card.id === game.selected)
@@ -224,7 +257,7 @@ function App() {
     queuedCardSelection.current = null
     setIsResolving(true)
     window.setTimeout(() => setIsResolving(false), willPeok ? 1600 : 2700)
-    setGame((current) => resolveGameTurn(current, pickedMatchId))
+    setGame((current) => resolveGameTurn(current, pickedMatchId, pickedDeckMatchId))
   }
 
   const playTurn = () => {
@@ -233,7 +266,7 @@ function App() {
     if (!played) return
     const matches = game.table.filter((card) => card.month === played.month)
     if (matches.length === 2) {
-      setMatchChoice({ playedId: played.id, matchIds: matches.map((card) => card.id) })
+      setMatchChoice({ source: 'hand', playedId: played.id, matchIds: matches.map((card) => card.id) })
       return
     }
     resolveTurn()
@@ -472,7 +505,26 @@ function App() {
                 <div className="deck-stack"><i>{game.deck.length}</i><span>남은 패</span></div>
                 <small className="deck-turn-hint">{game.lastTurnAction === 'deck' ? '카드를 내야 다시 사용 가능' : '턴을 소비해 카드 2장 놓기'}</small>
               </button>
-              {isResolving && capturedRevealedCards.map((card) => {
+              {matchChoice?.source === 'deck' && (() => {
+                const previewCard = game.deck.find((card) => card.id === matchChoice.playedId)
+                if (!previewCard) return null
+                const position = getFloorPosition(previewCard.month - 1, 12)
+                return <div
+                  className="loose-card dealt-from-deck deck-choice-preview"
+                  style={{
+                    '--floor-x': `${position.x}%`,
+                    '--floor-y': `${position.y}%`,
+                    '--stack-x': `${matchChoice.matchIds.length * 9}px`,
+                    '--stack-y': `${matchChoice.matchIds.length * 4}px`,
+                    '--scatter-shift': '0px',
+                    '--scatter-rotate': '0deg',
+                    '--deal-delay': '360ms',
+                  } as React.CSSProperties}
+                >
+                  <Card card={previewCard} compact />
+                </div>
+              })()}
+              {isResolving && capturedRevealedCards.filter((card) => card.id !== skipRevealedDealId.current).map((card) => {
                 const position = getFloorPosition(card.month - 1, 12)
                 const revealIndex = game.lastRevealed.indexOf(card.id)
                 const priorFloorCards = matchedTargetCards.filter((target) => target.month === card.month).length
@@ -521,7 +573,7 @@ function App() {
                 const position = getFloorPosition(group.month - 1, 12)
                 return group.cards.map((card, stackIndex) => (
                 <div
-                  className={`loose-card ${isResolving && game.lastPlayedId === card.id ? 'submitted-floor-placeholder' : ''} ${game.lastRevealed.includes(card.id) ? 'dealt-from-deck' : ''} ${group.cards.length > 1 ? 'same-month-stack' : ''} ${group.cards.length === 3 ? 'almost-set' : ''} ${selectedMonth === card.month ? 'can-capture' : ''}`}
+                  className={`loose-card ${isResolving && game.lastPlayedId === card.id ? 'submitted-floor-placeholder' : ''} ${game.lastRevealed.includes(card.id) && card.id !== skipRevealedDealId.current ? 'dealt-from-deck' : ''} ${group.cards.length > 1 ? 'same-month-stack' : ''} ${group.cards.length === 3 ? 'almost-set' : ''} ${selectedMonth === card.month ? 'can-capture' : ''}`}
                   key={card.id}
                   style={{
                     '--floor-x': `${position.x}%`,
@@ -630,11 +682,24 @@ function App() {
         <p>{selectedCharm.description}</p>
       </section></div>}
 
-      {matchChoice && (() => {
-        const played = game.hand.find((card) => card.id === matchChoice.playedId)
-        const candidates = game.table.filter((card) => matchChoice.matchIds.includes(card.id))
+      {matchChoice?.ready !== false && matchChoice && (() => {
+        const played = [...game.hand, ...game.deck].find((card) => card.id === matchChoice.playedId)
+        const candidates = [...game.table, ...game.hand].filter((card) => matchChoice.matchIds.includes(card.id))
         if (!played) return null
-        return <MatchChoiceModal played={played} candidates={candidates} onChoose={resolveTurn} onCancel={() => setMatchChoice(null)} />
+        const chooseMatch = (cardId: string) => {
+          if (matchChoice.source === 'deck') {
+            skipRevealedDealId.current = matchChoice.playedId
+            window.setTimeout(() => { skipRevealedDealId.current = null }, 2800)
+            resolveTurn(matchChoice.handMatchId, cardId)
+          } else {
+            resolveTurn(cardId)
+          }
+        }
+        const cancelChoice = () => {
+          setMatchChoice(null)
+          setIsResolving(false)
+        }
+        return <MatchChoiceModal played={played} candidates={candidates} onChoose={chooseMatch} onCancel={cancelChoice} />
       })()}
     </main>
   )

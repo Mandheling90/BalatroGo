@@ -12,7 +12,25 @@ const emptyMatch = (table: HwatuCard[]) => ({ table, captured: [] as HwatuCard[]
 export const shouldGameOverAfterTurn = (goCount: number, reachedTarget: boolean, remainingHandCount: number) =>
   !reachedTarget && (goCount > 0 || remainingHandCount === 0)
 
-export function resolveGameTurn(current: GameState, pickedMatchId?: string): GameState {
+export function getDeckMatchCandidates(current: GameState, pickedMatchId?: string): HwatuCard[] {
+  const played = current.hand.find((card) => card.id === current.selected)
+  if (!played) return []
+
+  const [firstRevealed] = current.deck
+  if (!firstRevealed) return []
+  const sameMonthHand = current.hand.filter((card) => card.month === played.month)
+  const originalMatches = current.table.filter((card) => card.month === played.month)
+  const isBomb = sameMonthHand.length === 3 && originalMatches.length === 1
+  const isPeok = !isBomb && originalMatches.length === 1 && firstRevealed?.month === played.month
+  const playerMatch = isPeok
+    ? { table: [...current.table, played, firstRevealed], captured: [] as HwatuCard[], matched: false, swept: false }
+    : isBomb
+      ? { table: current.table.filter((card) => card.id !== originalMatches[0].id), captured: [...sameMonthHand, originalMatches[0]], matched: true, swept: true }
+      : matchPlayedCard(current.table, played, pickedMatchId)
+  return isPeok ? [] : playerMatch.table.filter((card) => card.month === firstRevealed.month)
+}
+
+export function resolveGameTurn(current: GameState, pickedMatchId?: string, pickedDeckMatchId?: string): GameState {
   const played = current.hand.find((card) => card.id === current.selected)
   if (!played) return current
 
@@ -31,7 +49,7 @@ export function resolveGameTurn(current: GameState, pickedMatchId?: string): Gam
       ? { table: current.table.filter((card) => card.id !== originalMatches[0].id), captured: [...playedCards, originalMatches[0]], matched: true, swept: true }
       : matchPlayedCard(current.table, played, pickedMatchId)
   const deckMatch = firstRevealed
-    ? isPeok ? emptyMatch(playerMatch.table) : matchPlayedCard(playerMatch.table, firstRevealed)
+    ? isPeok ? emptyMatch(playerMatch.table) : matchPlayedCard(playerMatch.table, firstRevealed, pickedDeckMatchId)
     : emptyMatch(playerMatch.table)
   const tableAfterReveal = deckMatch.table
   const capturedFromTable = [...playerMatch.captured, ...deckMatch.captured]
